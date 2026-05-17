@@ -86,15 +86,15 @@ export function LoginModal({ onClose }: LoginModalProps) {
           <div className="space-y-2">
             <label htmlFor="email" className="block text-sm font-semibold text-slate-700">Email Address</label>
             <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-                <Mail size={18} />
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 group-focus-within:bg-indigo-500 group-focus-within:border-indigo-500 group-focus-within:text-white transition-all duration-200">
+                <Mail size={16} />
               </div>
               <input 
                 id="email" 
                 type="email" 
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-200 bg-white/80 backdrop-blur text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 group-hover:border-slate-300"
+                className="w-full pl-14 pr-4 py-3.5 rounded-xl border-2 border-slate-200 bg-white/80 backdrop-blur text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 group-hover:border-slate-300"
                 placeholder="you@company.com" 
                 required
               />
@@ -104,22 +104,22 @@ export function LoginModal({ onClose }: LoginModalProps) {
           <div className="space-y-2">
             <label htmlFor="password" className="block text-sm font-semibold text-slate-700">Password</label>
             <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-                <Lock size={18} />
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 group-focus-within:bg-indigo-500 group-focus-within:border-indigo-500 group-focus-within:text-white transition-all duration-200">
+                <Lock size={16} />
               </div>
               <input 
                 id="password" 
                 type={showPassword ? 'text' : 'password'} 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-12 pr-12 py-3.5 rounded-xl border-2 border-slate-200 bg-white/80 backdrop-blur text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 group-hover:border-slate-300"
+                className="w-full pl-14 pr-12 py-3.5 rounded-xl border-2 border-slate-200 bg-white/80 backdrop-blur text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 group-hover:border-slate-300"
                 placeholder="Enter your password" 
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 text-slate-400 hover:text-slate-600 transition-colors"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>

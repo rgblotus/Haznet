@@ -64,8 +64,28 @@ cp .env.example .env
 # Create PostgreSQL database
 createdb neodb  # or use psql to create manually
 
-# Run seed script (optional)
-python app/seed.py
+# Run migrations and seed data
+./db_setup.sh
+
+# Or force re-seed (clears existing data)
+./db_setup.sh --force
+```
+
+**Manual migration commands:**
+
+```bash
+cd backend
+source .venv/bin/activate
+
+# Create a new migration after model changes
+alembic revision --autogenerate -m "description"
+
+# Apply migrations
+alembic upgrade head
+
+# Seed data
+python -m app.seed
+python -m app.seed --force  # force re-seed
 ```
 
 ### 4. Setup Frontend

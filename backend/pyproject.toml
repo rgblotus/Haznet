@@ -21,4 +21,5 @@ dev = [
     "psycopg2-binary>=2.9.0",
     "pandas>=3.0.3",
     "openpyxl>=3.1.5",
+    "alembic>=1.14.0",
 ]

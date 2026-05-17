@@ -1,12 +1,17 @@
-from sqlalchemy.orm import Session
+import asyncio
+import sys
+import os
 from uuid import uuid4
 from datetime import datetime, timezone, timedelta
 import random
-import os
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from sqlalchemy.orm import Session
 from app.models import User, Department as DepartmentModel, Requisition, Vendor, Order, Tender, Bid, Message, PostOrder
 from app.models.enums import UserRole, RequisitionStatus, OrderStatus, TenderStatus, PostOrderStatus, Priority, QualityStatus, Designation
 from app.middleware.auth import hash_password
+from app.database import get_sync_engine, Base
 
 DESIGNATION_MAP = {
     "E1": Designation.E1,
@@ -30,10 +35,23 @@ ROLE_MAP = {
 }
 
 
-def seed(db: Session):
+def seed(db: Session, force: bool = False):
     if db.query(User).filter(User.username == "admin").first():
-        print("Database already seeded.")
-        return
+        if force:
+            print("Force seeding... Clearing existing data.")
+            db.query(Message).delete()
+            db.query(PostOrder).delete()
+            db.query(Bid).delete()
+            db.query(Order).delete()
+            db.query(Tender).delete()
+            db.query(Requisition).delete()
+            db.query(Vendor).delete()
+            db.query(User).delete()
+            db.query(DepartmentModel).delete()
+            db.commit()
+        else:
+            print("Database already seeded. Use --force to re-seed.")
+            return
 
     now = datetime.now(timezone.utc)
 
@@ -268,10 +286,10 @@ def seed(db: Session):
 
 
 if __name__ == "__main__":
-    from app.database import get_sync_engine, Base
-
+    force = "--force" in sys.argv
+    
     sync_engine, sync_session_factory = get_sync_engine()
     Base.metadata.create_all(sync_engine)
 
     with sync_session_factory() as db:
-        seed(db)
+        seed(db, force=force)

@@ -29,6 +29,19 @@ from app.api import (
 
 settings = get_settings()
 
+
+def run_migrations():
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import os
+        
+        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations applied successfully")
+    except Exception as e:
+        logger.warning(f"Migration check: {e}")
+
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -82,9 +95,10 @@ async def lifespan(app: FastAPI):
     logger.info(f"{"="*50}")
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Environment: {'Development' if settings.debug else 'Production'}")
-    logger.info(f"{'='*50}")
+    logger.info(f"{"="*50}")
     
     try:
+        run_migrations()
         await init_db()
         logger.info("Database connection established")
     except Exception as e:
