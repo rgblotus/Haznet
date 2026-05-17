@@ -50,48 +50,56 @@ function RightSidebar({ onStatusFilter, currentStatus, viewMode, onViewModeChang
     }
 
     return (
-        <div className="p-4 space-y-3">
-            <div className="p-4 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 rounded-xl border border-slate-200/60">
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Actions</h3>
-                <div className="space-y-1.5">
-                    <Link to="/orders/new" className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all duration-200 border border-transparent no-underline">
-                        <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
-                            <Plus size={14} className="text-rose-500" />
+        <div className="p-4 space-y-4">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Actions</h3>
+                </div>
+                <div className="p-3 space-y-2">
+                    <Link to="/orders/new" className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-rose-50 to-rose-100/50 text-rose-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-rose-200 no-underline">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-sm">
+                            <Plus size={14} className="text-white" />
                         </div>
-                        <span className="text-sm font-medium">Create Order</span>
+                        <span className="text-sm font-semibold">Create Order</span>
                     </Link>
-                    <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                            <RefreshCw size={14} className="text-slate-500" />
+                    <Link to="/receiving" className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-50 to-cyan-100/50 text-cyan-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-cyan-200 no-underline">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-sm">
+                            <Truck size={14} className="text-white" />
                         </div>
-                        <span className="text-sm font-medium">Refresh</span>
-                    </button>
-                    <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                            <Download size={14} className="text-slate-500" />
+                        <span className="text-sm font-semibold">Track Deliveries</span>
+                    </Link>
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100/50 text-amber-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-amber-200">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-sm">
+                            <FileCheck size={14} className="text-white" />
                         </div>
-                        <span className="text-sm font-medium">Export</span>
+                        <span className="text-sm font-semibold">Pending Receipts</span>
                     </button>
                 </div>
             </div>
 
             {viewMode !== undefined && (
-                <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">View Mode</h3>
-                    <div className="flex gap-2">
-                        <button onClick={() => onViewModeChange?.('list')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'list' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}>
-                            <List size={14} /> List
-                        </button>
-                        <button onClick={() => onViewModeChange?.('grid')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'grid' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}>
-                            <Grid3X3 size={14} /> Grid
-                        </button>
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                    <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">View Mode</h3>
+                    </div>
+                    <div className="p-3">
+                        <div className="flex gap-2">
+                            <button onClick={() => onViewModeChange?.('list')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${viewMode === 'list' ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-md shadow-rose-500/20' : 'text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'}`}>
+                                <List size={14} /> List
+                            </button>
+                            <button onClick={() => onViewModeChange?.('grid')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${viewMode === 'grid' ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-md shadow-rose-500/20' : 'text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'}`}>
+                                <Grid3X3 size={14} /> Grid
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Filter by Status</h3>
-                <div className="space-y-1">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-rose-500/5 to-rose-100/50 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filter by Status</h3>
+                </div>
+                <div className="p-3 space-y-1.5">
                     {statuses.map((s) => {
                         const Icon = s.icon
                         const isActive = currentStatus === s.value
@@ -99,7 +107,7 @@ function RightSidebar({ onStatusFilter, currentStatus, viewMode, onViewModeChang
                             <button 
                                 key={s.value} 
                                 onClick={() => onStatusFilter(s.value)} 
-                                className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left text-sm font-medium transition-all duration-200 ${isActive ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}
+                                className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-left text-sm font-medium transition-all duration-200 ${isActive ? 'bg-gradient-to-r from-rose-50 to-rose-100/50 text-rose-700 border border-rose-200 shadow-sm' : 'text-slate-500 hover:bg-slate-50 border border-transparent hover:border-slate-200'}`}
                             >
                                 <Icon size={14} className={isActive ? 'text-rose-500' : 'text-slate-400'} />
                                 {s.label}
@@ -109,14 +117,18 @@ function RightSidebar({ onStatusFilter, currentStatus, viewMode, onViewModeChang
                 </div>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/50">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 rounded-md bg-slate-200 flex items-center justify-center">
-                        <FileCheck size={12} className="text-slate-500" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-b border-slate-100/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                            <FileCheck size={12} className="text-white" />
+                        </div>
+                        <span className="text-xs font-bold text-slate-600">Order Workflow</span>
                     </div>
-                    <span className="text-xs font-semibold text-slate-600">Order Workflow</span>
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">Orders are created from approved requisitions or tender awards.</p>
+                <div className="p-3">
+                    <p className="text-xs text-slate-500 leading-relaxed">Orders are created from approved requisitions or tender awards.</p>
+                </div>
             </div>
         </div>
     )
@@ -209,7 +221,6 @@ export default function OrdersPage() {
 
     return (
         <PageLayout
-            title="Purchase Orders"
             rightSidebar={
                 <RightSidebar 
                     onStatusFilter={(s) => { setStatusFilter(s); setCurrentPage(1) }} 
@@ -217,11 +228,6 @@ export default function OrdersPage() {
                     viewMode={viewMode}
                     onViewModeChange={setViewMode}
                 />
-            }
-            actions={
-                <Button variant="primary" onClick={() => setShowModal(true)} className="bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 shadow-lg shadow-rose-500/25 btn-shine">
-                    <Plus size={18} /> Create Order
-                </Button>
             }
         >
             <div className="max-w-7xl mx-auto space-y-6">

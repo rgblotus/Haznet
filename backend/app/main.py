@@ -17,6 +17,7 @@ from app.database import init_db, close_db
 from app.api import (
     auth,
     requisitions,
+    documents,
     tenders,
     vendors,
     orders,
@@ -196,6 +197,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(requisitions.router, prefix="/api/requisitions", tags=["Requisitions"])
+app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(tenders.router, prefix="/api/tenders", tags=["Tenders"])
 app.include_router(vendors.router, prefix="/api/vendors", tags=["Vendors"])
 app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])

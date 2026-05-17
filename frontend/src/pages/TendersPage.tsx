@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '@/services/api'
@@ -49,57 +49,67 @@ function ActionButton({ icon: Icon, label, onClick, active, color = 'indigo', hr
     return <button onClick={onClick}>{content}</button>
 }
 
-function RightSidebar({ onStatusFilter, currentStatus, viewMode, onViewModeChange }: { onStatusFilter: (s: string) => void; currentStatus: string; viewMode?: 'list' | 'grid'; onViewModeChange?: (mode: 'list' | 'grid') => void }) {
+function RightSidebar({ onStatusFilter, currentStatus, viewMode, onViewModeChange, canCreate }: { onStatusFilter: (s: string) => void; currentStatus: string; viewMode?: 'list' | 'grid'; onViewModeChange?: (mode: 'list' | 'grid') => void; canCreate?: boolean }) {
     return (
-        <div className="p-4 space-y-3">
-            <div className="p-4 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 rounded-xl border border-slate-200/60">
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Actions</h3>
-                <div className="space-y-1.5">
-                    <Link to="/tenders/new" className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all duration-200 border border-transparent no-underline">
-                        <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
-                            <Plus size={14} className="text-amber-500" />
+        <div className="p-4 space-y-4">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Actions</h3>
+                </div>
+                <div className="p-3 space-y-2">
+                    {canCreate && (
+                        <button onClick={() => window.dispatchEvent(new CustomEvent('open-tender-create'))} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-amber-200">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-sm">
+                                <Plus size={14} className="text-white" />
+                            </div>
+                            <span className="text-sm font-semibold">Create Tender</span>
+                        </button>
+                    )}
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 text-emerald-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-emerald-200">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                            <Award size={14} className="text-white" />
                         </div>
-                        <span className="text-sm font-medium">Create Tender</span>
-                    </Link>
-                    <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                            <RefreshCw size={14} className="text-slate-500" />
-                        </div>
-                        <span className="text-sm font-medium">Refresh</span>
+                        <span className="text-sm font-semibold">View Awards</span>
                     </button>
-                    <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                            <Download size={14} className="text-slate-500" />
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-50 to-violet-100/50 text-violet-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-violet-200">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-sm">
+                            <TrendingUp size={14} className="text-white" />
                         </div>
-                        <span className="text-sm font-medium">Export</span>
+                        <span className="text-sm font-semibold">Analytics</span>
                     </button>
                 </div>
             </div>
 
-            <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">View Mode</h3>
-                <div className="flex gap-2">
-                    <button onClick={() => onViewModeChange?.('list')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'list' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}>
-                        <List size={14} /> List
-                    </button>
-                    <button onClick={() => onViewModeChange?.('grid')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'grid' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}>
-                        <Grid3X3 size={14} /> Grid
-                    </button>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">View Mode</h3>
+                </div>
+                <div className="p-3">
+                    <div className="flex gap-2">
+                        <button onClick={() => onViewModeChange?.('list')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${viewMode === 'list' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20' : 'text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'}`}>
+                            <List size={14} /> List
+                        </button>
+                        <button onClick={() => onViewModeChange?.('grid')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${viewMode === 'grid' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20' : 'text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'}`}>
+                            <Grid3X3 size={14} /> Grid
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Filter by Status</h3>
-                <div className="space-y-1">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filter by Status</h3>
+                </div>
+                <div className="p-3 space-y-1.5">
                     {statusOptions.map((s) => {
                         const isActive = currentStatus === s.value
                         return (
                             <button 
                                 key={s.value} 
                                 onClick={() => onStatusFilter(s.value)} 
-                                className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left text-sm font-medium transition-all duration-200 ${isActive ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}
+                                className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-left text-sm font-medium transition-all duration-200 ${isActive ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200 shadow-sm' : 'text-slate-500 hover:bg-slate-50 border border-transparent hover:border-slate-200'}`}
                             >
-                                <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                                <div className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${isActive ? 'bg-amber-500 shadow-sm shadow-amber-500/50 scale-110' : 'bg-slate-300'}`} />
                                 {s.label}
                             </button>
                         )
@@ -107,16 +117,20 @@ function RightSidebar({ onStatusFilter, currentStatus, viewMode, onViewModeChang
                 </div>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/50">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 rounded-md bg-slate-200 flex items-center justify-center">
-                        <Lightbulb size={12} className="text-slate-500" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-b border-slate-100/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                            <Lightbulb size={12} className="text-white" />
+                        </div>
+                        <span className="text-xs font-bold text-slate-600">Tender Tips</span>
                     </div>
-                    <span className="text-xs font-semibold text-slate-600">Tender Tips</span>
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                    Ensure clear specifications and evaluation criteria before publishing.
-                </p>
+                <div className="p-3">
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                        Ensure clear specifications and evaluation criteria before publishing.
+                    </p>
+                </div>
             </div>
         </div>
     )
@@ -164,6 +178,7 @@ function TenderCard({ tender }: { tender: any }) {
 
 export default function TendersPage() {
     const user = useAuthStore((s) => s.user)
+    const role = user?.role || 'indentor'
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState<string>('all')
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
@@ -174,6 +189,14 @@ export default function TendersPage() {
     })
     const queryClient = useQueryClient()
     const itemsPerPage = 9
+
+    const canCreate = ['procurement_officer', 'cnp_hod', 'oic'].includes(role)
+
+    useEffect(() => {
+        const handleOpenCreate = () => setShowModal(true)
+        window.addEventListener('open-tender-create', handleOpenCreate)
+        return () => window.removeEventListener('open-tender-create', handleOpenCreate)
+    }, [])
 
     const { data: tendersResponse, isLoading } = useQuery({ 
         queryKey: ['tenders'], 
@@ -209,19 +232,14 @@ export default function TendersPage() {
 
     return (
         <PageLayout
-            title="Tenders"
             rightSidebar={
                 <RightSidebar 
                     onStatusFilter={(s) => { setStatusFilter(s); setCurrentPage(1) }} 
                     currentStatus={statusFilter}
                     viewMode={viewMode}
                     onViewModeChange={setViewMode}
+                    canCreate={canCreate}
                 />
-            }
-            actions={
-                <Button variant="primary" onClick={() => setShowModal(true)} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/25 btn-shine">
-                    <Plus size={18} /> Create Tender
-                </Button>
             }
         >
             <div className="max-w-7xl mx-auto space-y-6">

@@ -149,6 +149,16 @@ class RequisitionCreate(BaseModel):
     required_by_date: Optional[datetime] = None
     justification: Optional[str] = None
     specifications: Optional[str] = None
+    financial_year: Optional[str] = None
+    sap_requisition_number: Optional[str] = Field(None, max_length=8)
+    requisition_create_date: Optional[datetime] = None
+    requisition_hod_release_date: Optional[datetime] = None
+    job_description: Optional[str] = Field(None, max_length=300)
+    cost_estimate: Optional[float] = None
+    startup_applicable: bool = False
+    industry: Optional[str] = Field(None, max_length=100)
+    sector: Optional[str] = Field(None, max_length=100)
+    contract_period_months: Optional[int] = None
 
 
 class RequisitionUpdate(BaseModel):
@@ -163,6 +173,15 @@ class RequisitionUpdate(BaseModel):
     required_by_date: Optional[datetime] = None
     justification: Optional[str] = None
     specifications: Optional[str] = None
+    financial_year: Optional[str] = None
+    sap_requisition_number: Optional[str] = None
+    requisition_hod_release_date: Optional[datetime] = None
+    job_description: Optional[str] = None
+    cost_estimate: Optional[float] = None
+    startup_applicable: Optional[bool] = None
+    industry: Optional[str] = None
+    sector: Optional[str] = None
+    contract_period_months: Optional[int] = None
 
 
 class RequisitionOut(BaseModel):
@@ -187,8 +206,44 @@ class RequisitionOut(BaseModel):
     inventory_check_status: Optional[InventoryCheckStatus] = None
     procurement_method: Optional[ProcurementMethod] = None
     tender_id: Optional[UUID] = None
+    financial_year: Optional[str] = None
+    sap_requisition_number: Optional[str] = None
+    requisition_create_date: Optional[datetime] = None
+    requisition_hod_release_date: Optional[datetime] = None
+    job_description: Optional[str] = None
+    cost_estimate: Optional[float] = None
+    startup_applicable: bool = False
+    industry: Optional[str] = None
+    sector: Optional[str] = None
+    contract_period_months: Optional[int] = None
+    integrity_pact: bool = False
+    file_reference: Optional[str] = None
+    return_reason: Optional[str] = None
+    returned_to_indentor: bool = False
+    assigned_to_procurement: bool = False
     created_at: datetime
     updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class WorkflowAction(BaseModel):
+    reason: Optional[str] = None
+    assign_to: Optional[UUID] = None
+
+
+# ── Document ─────────────────────────────────────────
+
+class DocumentOut(BaseModel):
+    id: UUID
+    requisition_id: UUID
+    file_name: str
+    file_path: str
+    file_type: Optional[str] = None
+    file_size: Optional[int] = None
+    uploaded_by: UUID
+    uploader_name: Optional[str] = None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 

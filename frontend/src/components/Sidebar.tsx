@@ -7,7 +7,6 @@ import {
   Package,
   Truck,
   Users,
-  Settings,
   Menu,
   X,
   Hexagon,
@@ -15,8 +14,9 @@ import {
   LogOut,
   Building2,
   Briefcase,
+  Warehouse,
 } from 'lucide-react'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore, canAccess } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
 import { api } from '@/services/api'
 
@@ -27,13 +27,14 @@ interface NavItem {
   color: string
 }
 
-const navItems: NavItem[] = [
+const allNavItems: NavItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: BarChart3, color: 'indigo' },
   { name: 'Requisitions', path: '/requisitions', icon: FileText, color: 'amber' },
   { name: 'Tenders', path: '/tenders', icon: ClipboardList, color: 'violet' },
   { name: 'Vendors', path: '/vendors', icon: Building2, color: 'emerald' },
   { name: 'Orders', path: '/orders', icon: Package, color: 'rose' },
   { name: 'Receiving', path: '/receiving', icon: Truck, color: 'cyan' },
+  { name: 'Inventory', path: '/inventory', icon: Warehouse, color: 'teal' },
 ]
 
 const bottomNavItems: NavItem[] = [
@@ -48,6 +49,7 @@ const colorMap: Record<string, string> = {
   rose: 'hover:from-rose-500 hover:to-rose-600',
   cyan: 'hover:from-cyan-500 hover:to-cyan-600',
   slate: 'hover:from-slate-500 hover:to-slate-600',
+  teal: 'hover:from-teal-500 hover:to-teal-600',
 }
 
 export default function Sidebar() {
@@ -55,6 +57,7 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+  const role = user?.role || 'indentor'
 
   const handleLogout = async () => {
     try { await api.auth.logout() } catch {}
@@ -66,6 +69,8 @@ export default function Sidebar() {
     else document.body.style.overflow = ''
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
+
+  const navItems = allNavItems.filter(item => canAccess(role, item.path.replace('/', '') || 'dashboard'))
 
   const NavLink = ({ item }: { item: NavItem }) => {
     const isActive = location.pathname.startsWith(item.path)
@@ -108,13 +113,15 @@ export default function Sidebar() {
       </nav>
 
       <div className="p-3 border-t border-slate-100/50 space-y-1">
-        {bottomNavItems.map((item) => (
+        {bottomNavItems.filter(item => canAccess(role, 'messages')).map((item) => (
           <NavLink key={item.name} item={item} />
         ))}
         
-        <NavLink key="My Department" item={{ name: 'My Department', path: '/department', icon: Briefcase, color: 'amber' }} />
+        {canAccess(role, 'department') && (
+          <NavLink key="My Department" item={{ name: 'My Department', path: '/department', icon: Briefcase, color: 'amber' }} />
+        )}
         
-        {user?.role === 'admin' && (
+        {canAccess(role, 'admin_users') && (
           <NavLink key="User Management" item={{ name: 'User Management', path: '/admin/users', icon: Users, color: 'indigo' }} />
         )}
       </div>

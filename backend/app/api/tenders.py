@@ -5,7 +5,7 @@ from uuid import UUID
 
 from app.database import get_db
 from app.middleware.auth import get_current_user, require_role
-from app.models import User, Tender, Bid, UserRole, TenderStatus
+from app.models import User, Tender, Bid, Requisition, UserRole, TenderStatus, RequisitionStatus
 from app.schemas import (
     TenderCreate, TenderUpdate, TenderOut,
     BidCreate, BidOut,
@@ -34,6 +34,11 @@ async def list_tenders(
 ):
     query = select(Tender)
     count_query = select(func.count(Tender.id))
+
+    if current_user.role == UserRole.INDENTOR:
+        req_subquery = select(Requisition.id).where(Requisition.creator_id == current_user.id)
+        query = query.where(Tender.requisition_id.in_(req_subquery))
+        count_query = count_query.where(Tender.requisition_id.in_(req_subquery))
 
     if status:
         query = query.where(Tender.status == TenderStatus(status))
@@ -64,24 +69,44 @@ async def list_tenders(
 @router.get("/{tender_id}", response_model=TenderOut)
 async def get_tender(
     tender_id: UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = result.scalar_one_or_none()
     if not tender:
         raise HTTPException(404, "Tender not found")
+
+    if current_user.role == UserRole.INDENTOR and tender.requisition_id:
+        req_result = await db.execute(
+            select(Requisition).where(
+                Requisition.id == tender.requisition_id,
+                Requisition.creator_id == current_user.id
+            )
+        )
+        if not req_result.scalar_one_or_none():
+            raise HTTPException(403, "You do not have permission to view this tender")
+
     return tender
 
 
 @router.post("", response_model=TenderOut, status_code=201)
 async def create_tender(
     body: TenderCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
     db: AsyncSession = Depends(get_db),
 ):
     tender_no = await _gen_tender_no(db)
     tender = Tender(**body.model_dump(), tender_no=tender_no)
     db.add(tender)
+
+    if body.requisition_id:
+        req_result = await db.execute(select(Requisition).where(Requisition.id == body.requisition_id))
+        req = req_result.scalar_one_or_none()
+        if req:
+            req.tender_id = tender.id
+            req.status = RequisitionStatus.TENDER_CREATED
+
     await db.commit()
     await db.refresh(tender)
     return tender
@@ -91,7 +116,7 @@ async def create_tender(
 async def update_tender(
     tender_id: UUID,
     body: TenderUpdate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD)),
+    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
@@ -107,10 +132,10 @@ async def update_tender(
     return tender
 
 
-@router.post("/{tender_id}/publish", response_model=TenderOut)
-async def publish_tender(
+@router.delete("/{tender_id}")
+async def delete_tender(
     tender_id: UUID,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD)),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
@@ -118,7 +143,33 @@ async def publish_tender(
     if not tender:
         raise HTTPException(404, "Tender not found")
 
+    if tender.requisition_id:
+        req_result = await db.execute(select(Requisition).where(Requisition.id == tender.requisition_id))
+        req = req_result.scalar_one_or_none()
+        if req:
+            req.tender_id = None
+            req.status = RequisitionStatus.PROCESSING
+
+    await db.delete(tender)
+    await db.commit()
+    return {"message": "Tender deleted successfully"}
+
+
+@router.post("/{tender_id}/publish", response_model=TenderOut)
+async def publish_tender(
+    tender_id: UUID,
+    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Tender).where(Tender.id == tender_id))
+    tender = result.scalar_one_or_none()
+    if not tender:
+        raise HTTPException(404, "Tender not found")
+
+    from datetime import datetime, timezone
     tender.status = TenderStatus.BIDDING
+    tender.issue_date = datetime.now(timezone.utc)
+
     await db.commit()
     await db.refresh(tender)
     return tender
@@ -127,8 +178,24 @@ async def publish_tender(
 @router.get("/{tender_id}/bids", response_model=list[BidOut])
 async def list_bids(
     tender_id: UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    tender_result = await db.execute(select(Tender).where(Tender.id == tender_id))
+    tender = tender_result.scalar_one_or_none()
+    if not tender:
+        raise HTTPException(404, "Tender not found")
+
+    if current_user.role == UserRole.INDENTOR and tender.requisition_id:
+        req_result = await db.execute(
+            select(Requisition).where(
+                Requisition.id == tender.requisition_id,
+                Requisition.creator_id == current_user.id
+            )
+        )
+        if not req_result.scalar_one_or_none():
+            raise HTTPException(403, "You do not have permission to view bids for this tender")
+
     result = await db.execute(
         select(Bid).where(Bid.tender_id == tender_id).order_by(Bid.created_at.desc())
     )
@@ -160,7 +227,7 @@ async def evaluate_bid(
     bid_id: UUID,
     technical_score: float,
     financial_score: float,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD)),
+    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Bid).where(Bid.id == bid_id))
@@ -180,7 +247,7 @@ async def evaluate_bid(
 async def award_bid(
     tender_id: UUID,
     bid_id: UUID,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD)),
+    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
     db: AsyncSession = Depends(get_db),
 ):
     bids_result = await db.execute(select(Bid).where(Bid.tender_id == tender_id))
@@ -198,6 +265,12 @@ async def award_bid(
     tender = tender_result.scalar_one_or_none()
     if tender:
         tender.status = TenderStatus.AWARDED
+
+    if tender and tender.requisition_id:
+        req_result = await db.execute(select(Requisition).where(Requisition.id == tender.requisition_id))
+        req = req_result.scalar_one_or_none()
+        if req:
+            req.status = RequisitionStatus.TENDER_AWARDED
 
     await db.commit()
     return {"message": "Bid awarded successfully"}

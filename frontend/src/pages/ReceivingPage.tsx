@@ -12,108 +12,74 @@ import { Plus, Package, Truck, Clock, Eye, LayoutGrid, List, Search, CheckCircle
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
 
-function RightSidebar() {
+function RightSidebar({ pendingCount, passedCount, failedCount }: { pendingCount: number; passedCount: number; failedCount: number }) {
     return (
-        <AnimatedList className="p-4 space-y-3">
-            <AnimatedItem>
-                <div className="p-4 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 rounded-xl border border-slate-200/60">
-                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Quick Actions</h3>
-                    <div className="space-y-1.5">
-                        <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-cyan-50 hover:text-cyan-600 hover:border-cyan-200 transition-all duration-200 border border-transparent">
-                            <div className="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
-                                <RefreshCw size={14} className="text-cyan-500" />
-                            </div>
-                            <span className="text-sm font-medium">Refresh</span>
-                        </button>
-                        <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                                <Download size={14} className="text-slate-500" />
-                            </div>
-                            <span className="text-sm font-medium">Export</span>
-                        </button>
-                    </div>
+        <div className="p-4 space-y-4">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Actions</h3>
                 </div>
-            </AnimatedItem>
-
-            <AnimatedItem>
-                <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h3>
-                    <div className="space-y-2">
-                        <button className="flex items-center gap-3 w-full px-3 py-2.5 bg-cyan-50 rounded-lg cursor-pointer hover:bg-cyan-100 transition-all duration-200 group">
-                            <div className="w-7 h-7 rounded-lg bg-cyan-100 flex items-center justify-center">
-                                <Scale size={14} className="text-cyan-600" />
-                            </div>
-                            <span className="text-sm font-medium text-slate-600 group-hover:text-cyan-600 transition-colors">Pending Weighment</span>
-                        </button>
-                        <button className="flex items-center gap-3 w-full px-3 py-2.5 bg-violet-50 rounded-lg cursor-pointer hover:bg-violet-100 transition-all duration-200 group">
-                            <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
-                                <QrCode size={14} className="text-violet-600" />
-                            </div>
-                            <span className="text-sm font-medium text-slate-600 group-hover:text-violet-600 transition-colors">Scan Receipt</span>
-                        </button>
-                    </div>
-                </div>
-            </AnimatedItem>
-
-            <AnimatedItem>
-                <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Inspection Stats</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <CheckCircle size={14} className="text-emerald-600" />
-                            </div>
-                            <div>
-                                <p className="text-lg font-bold text-slate-700">156</p>
-                                <p className="text-xs text-slate-500">Passed</p>
-                            </div>
+                <div className="p-3 space-y-2">
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-50 to-cyan-100/50 text-cyan-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-cyan-200">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-sm">
+                            <ClipboardCheck size={14} className="text-white" />
                         </div>
-                        <div className="p-3 bg-red-50 rounded-lg flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                                <XCircle size={14} className="text-red-600" />
-                            </div>
-                            <div>
-                                <p className="text-lg font-bold text-slate-700">3</p>
-                                <p className="text-xs text-slate-500">Failed</p>
-                            </div>
+                        <span className="text-sm font-semibold">Start Inspection</span>
+                    </button>
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-50 to-violet-100/50 text-violet-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-violet-200">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-sm">
+                            <QrCode size={14} className="text-white" />
                         </div>
-                    </div>
-                </div>
-            </AnimatedItem>
-
-            <AnimatedItem>
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/50">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-md bg-slate-200 flex items-center justify-center">
-                            <ShieldCheck size={12} className="text-slate-500" />
+                        <span className="text-sm font-semibold">Scan Receipt</span>
+                    </button>
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 text-emerald-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-emerald-200">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                            <Truck size={14} className="text-white" />
                         </div>
-                        <span className="text-xs font-semibold text-slate-600">Quality Check</span>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                        Verify quantity, quality, and specifications before acceptance.
-                    </p>
+                        <span className="text-sm font-semibold">View Deliveries</span>
+                    </button>
                 </div>
-            </AnimatedItem>
+            </div>
 
-            <AnimatedItem>
-                <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Receiving Process</h3>
-                    <div className="space-y-1.5">
-                        {['Goods Received', 'Quantity Verification', 'Quality Inspection', 'Update Inventory', 'Close Order'].map((step, i) => (
-                            <div key={step} className="flex items-center gap-2">
-                                <div className={cn(
-                                    'w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium',
-                                    i < 2 ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-100 text-slate-400'
-                                )}>
-                                    {i < 2 ? <Check size={10} /> : i + 1}
-                                </div>
-                                <span className="text-xs text-slate-500">{step}</span>
-                            </div>
-                        ))}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-emerald-500/5 to-emerald-100/50 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inspection Stats</h3>
+                </div>
+                <div className="p-3 space-y-2">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100/50 border border-amber-100/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
+                        <span className="text-xs text-amber-600 font-semibold">Pending</span>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-700 shadow-sm">{pendingCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 border border-emerald-100/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
+                        <span className="text-xs text-emerald-600 font-semibold">Passed</span>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 shadow-sm">{passedCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-red-50 to-red-100/50 border border-red-100/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
+                        <span className="text-xs text-red-600 font-semibold">Failed</span>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-red-100 text-red-700 shadow-sm">{failedCount}</span>
                     </div>
                 </div>
-            </AnimatedItem>
-        </AnimatedList>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-violet-500/5 to-violet-100/50 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Process Steps</h3>
+                </div>
+                <div className="p-3 space-y-1.5">
+                    {['Goods Received', 'Quantity Check', 'Quality Inspection', 'Update Inventory', 'Close Order'].map((step, i) => (
+                        <div key={step} className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-50/80 transition-all duration-200 border border-transparent hover:border-slate-100">
+                            <div className={cn(
+                                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-200',
+                                i < 2 ? 'bg-gradient-to-br from-cyan-500 to-cyan-600 text-white shadow-sm shadow-cyan-500/30' : 'bg-slate-100 text-slate-400'
+                            )}>
+                                {i < 2 ? <Check size={10} /> : i + 1}
+                            </div>
+                            <span className={cn('text-xs font-medium transition-colors', i < 2 ? 'text-slate-700' : 'text-slate-400')}>{step}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
     )
 }
 
@@ -222,13 +188,7 @@ export default function ReceivingPage() {
 
     return (
         <PageLayout 
-            title="Receiving & Inspection"
-            rightSidebar={<RightSidebar />}
-            actions={
-                <Button variant="primary" size="md" onClick={handleStartInspection} className="bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-lg shadow-cyan-500/25">
-                    <ClipboardCheck size={18} /> Start Inspection
-                </Button>
-            }
+            rightSidebar={<RightSidebar pendingCount={pendingCount} passedCount={passedCount} failedCount={failedCount} />}
         >
             <div className="max-w-7xl mx-auto space-y-6">
                 <WelcomeHeader />

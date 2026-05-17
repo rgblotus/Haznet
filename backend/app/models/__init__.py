@@ -77,6 +77,25 @@ class Requisition(Base):
     procurement_method = Column(SAEnum(ProcurementMethod, name="procurement_method"), nullable=True)
     tender_id = Column(UUID(as_uuid=True), ForeignKey("tenders.id"), nullable=True)
 
+    # New fields
+    financial_year = Column(String(20), nullable=True)
+    sap_requisition_number = Column(String(8), nullable=True, index=True)
+    requisition_create_date = Column(DateTime(timezone=True), nullable=True)
+    requisition_hod_release_date = Column(DateTime(timezone=True), nullable=True)
+    job_description = Column(String(300), nullable=True)
+    cost_estimate = Column(Float, nullable=True)
+    startup_applicable = Column(Boolean, default=False)
+    industry = Column(String(100), nullable=True)
+    sector = Column(String(100), nullable=True)
+    contract_period_months = Column(Integer, nullable=True)
+    integrity_pact = Column(Boolean, default=False)
+    file_reference = Column(String(100), unique=True, nullable=True, index=True)
+
+    # Workflow history
+    return_reason = Column(Text, nullable=True)
+    returned_to_indentor = Column(Boolean, default=False)
+    assigned_to_procurement = Column(Boolean, default=False)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -86,6 +105,23 @@ class Requisition(Base):
     tender = relationship("Tender", back_populates="requisition", foreign_keys="Tender.requisition_id")
     messages = relationship("Message", back_populates="requisition")
     orders = relationship("Order", back_populates="requisition")
+    documents = relationship("Document", back_populates="requisition", cascade="all, delete-orphan")
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requisition_id = Column(UUID(as_uuid=True), ForeignKey("requisitions.id"), nullable=False)
+    file_name = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=False)
+    file_type = Column(String(50), nullable=True)
+    file_size = Column(Integer, nullable=True)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    requisition = relationship("Requisition", back_populates="documents")
+    uploader = relationship("User")
 
 
 class Tender(Base):

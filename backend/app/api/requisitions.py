@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, cast, Integer, or_, and_
 from uuid import UUID
+from datetime import datetime, timezone
 
 from app.database import get_db
 from app.middleware.auth import get_current_user, require_role
 from app.models import User, Requisition, Department, UserRole, RequisitionStatus
 from app.schemas import (
-    RequisitionCreate, RequisitionUpdate, RequisitionOut,
+    RequisitionCreate, RequisitionUpdate, RequisitionOut, WorkflowAction,
     PaginatedResponse, create_pagination_meta,
 )
 
@@ -20,6 +21,41 @@ async def _gen_requisition_no(db: AsyncSession):
     )
     num = result.scalar() or 0
     return f"REQ-{num + 1:05d}"
+
+
+async def _gen_file_reference(db: AsyncSession, financial_year: str, sap_req_no: str) -> str:
+    year_part = financial_year.replace("FY ", "") if financial_year.startswith("FY ") else financial_year
+    result = await db.execute(
+        select(func.max(cast(func.substring(Requisition.file_reference, -4), Integer)))
+        .where(Requisition.file_reference.isnot(None))
+    )
+    num = result.scalar() or 0
+    sequence = num + 1
+    if sequence > 1000:
+        sequence = 1
+    return f"GAIL/HZR/CNP/{year_part}/{sap_req_no}/{sequence:04d}"
+
+
+def _can_edit_req(user: User, req: Requisition) -> bool:
+    if user.role == UserRole.ADMIN:
+        return True
+    if user.role == UserRole.INDENTOR and req.creator_id == user.id:
+        return req.status in (RequisitionStatus.DRAFT, RequisitionStatus.RETURNED)
+    if user.role in (UserRole.CNP_HOD, UserRole.PROCUREMENT_OFFICER, UserRole.OIC):
+        return req.status not in (RequisitionStatus.COMPLETED, RequisitionStatus.CANCELLED)
+    return False
+
+
+def _can_view_req(user: User, req: Requisition) -> bool:
+    if user.role in (UserRole.ADMIN, UserRole.OIC):
+        return True
+    if user.role == UserRole.INDENTOR:
+        return req.creator_id == user.id
+    if user.role == UserRole.HOD:
+        return req.department_id == user.department_id
+    if user.role in (UserRole.CNP_HOD, UserRole.PROCUREMENT_OFFICER, UserRole.INVENTORY_MANAGER):
+        return True
+    return False
 
 
 @router.get("", response_model=PaginatedResponse[RequisitionOut])
@@ -89,6 +125,8 @@ async def get_req(
     req = result.scalar_one_or_none()
     if not req:
         raise HTTPException(404, "Requisition not found")
+    if not _can_view_req(current_user, req):
+        raise HTTPException(403, "You do not have permission to view this requisition")
     return req
 
 
@@ -107,22 +145,47 @@ async def create_req(
         if dep:
             dept_id = dep.id
 
+    integrity_pact = (body.cost_estimate or 0) > 10000000
+
+    file_reference = None
+    if body.financial_year and body.sap_requisition_number:
+        file_reference = await _gen_file_reference(db, body.financial_year, body.sap_requisition_number)
+
+    requisition_create_date = body.requisition_create_date or datetime.now(timezone.utc)
+
+    title = body.title or (body.job_description[:50] if body.job_description else f"REQ-{body.sap_requisition_number or 'NEW'}")
+    description = body.description or body.job_description or ""
+    total_estimate = body.total_estimate or body.cost_estimate
+
     req = Requisition(
         requisition_no=req_no,
-        title=body.title,
-        description=body.description,
+        title=title,
+        description=description,
         category=body.category,
         priority=body.priority,
         quantity=body.quantity,
         unit_price_estimate=body.unit_price_estimate,
-        total_estimate=body.total_estimate,
+        total_estimate=total_estimate,
         currency=body.currency,
         required_by_date=body.required_by_date,
         justification=body.justification,
         specifications=body.specifications,
         creator_id=current_user.id,
         department_id=dept_id,
-        status=RequisitionStatus.SUBMITTED,
+        current_owner_id=current_user.id,
+        status=RequisitionStatus.DRAFT,
+        financial_year=body.financial_year,
+        sap_requisition_number=body.sap_requisition_number,
+        requisition_create_date=requisition_create_date,
+        requisition_hod_release_date=body.requisition_hod_release_date,
+        job_description=body.job_description,
+        cost_estimate=body.cost_estimate,
+        startup_applicable=body.startup_applicable,
+        industry=body.industry,
+        sector=body.sector,
+        contract_period_months=body.contract_period_months,
+        integrity_pact=integrity_pact,
+        file_reference=file_reference,
     )
     db.add(req)
     await db.commit()
@@ -142,11 +205,33 @@ async def update_req(
     if not req:
         raise HTTPException(404, "Requisition not found")
 
+    if not _can_edit_req(current_user, req):
+        raise HTTPException(403, "You do not have permission to edit this requisition")
+
     for k, v in body.model_dump(exclude_unset=True).items():
         setattr(req, k, v)
     await db.commit()
     await db.refresh(req)
     return req
+
+
+@router.delete("/{req_id}")
+async def delete_req(
+    req_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Requisition not found")
+
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(403, "Only administrators can delete requisitions")
+
+    await db.delete(req)
+    await db.commit()
+    return {"message": "Requisition deleted successfully"}
 
 
 @router.post("/{req_id}/submit", response_model=RequisitionOut)
@@ -162,10 +247,46 @@ async def submit_req(
         )
     )
     req = result.scalar_one_or_none()
-    if not req or req.status != RequisitionStatus.DRAFT:
-        raise HTTPException(400, "Cannot submit requisition")
+    if not req:
+        raise HTTPException(404, "Requisition not found")
+    if req.status not in (RequisitionStatus.DRAFT, RequisitionStatus.RETURNED):
+        raise HTTPException(400, "Can only submit draft or returned requisitions")
 
     req.status = RequisitionStatus.SUBMITTED
+    req.return_reason = None
+    req.returned_to_indentor = False
+
+    cnphod_result = await db.execute(
+        select(User).where(User.role == UserRole.CNP_HOD, User.is_active == True)
+    )
+    cnphod = cnphod_result.scalars().first()
+    if cnphod:
+        req.current_owner_id = cnphod.id
+
+    await db.commit()
+    await db.refresh(req)
+    return req
+
+
+@router.post("/{req_id}/review", response_model=RequisitionOut)
+async def review_req(
+    req_id: UUID,
+    body: WorkflowAction = WorkflowAction(),
+    current_user: User = Depends(require_role(UserRole.CNP_HOD, UserRole.OIC)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Requisition not found")
+    if req.status not in (RequisitionStatus.SUBMITTED, RequisitionStatus.UNDER_REVIEW):
+        raise HTTPException(400, "Requisition is not pending review")
+
+    req.status = RequisitionStatus.UNDER_REVIEW
+    req.hodi_cnp_approval = "Approved"
+    if body.reason:
+        req.return_reason = body.reason
+
     await db.commit()
     await db.refresh(req)
     return req
@@ -174,32 +295,88 @@ async def submit_req(
 @router.post("/{req_id}/return", response_model=RequisitionOut)
 async def return_req(
     req_id: UUID,
-    reason: str | None = None,
-    processor_user: User = Depends(require_role(UserRole.HOD, UserRole.CNP_HOD)),
+    body: WorkflowAction = WorkflowAction(),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
-    if not req:
-        raise HTTPException(404, "Requisition not found")
-
-    if processor_user.role == UserRole.CNP_HOD and req.current_owner_id == processor_user.id:
-        req.status = RequisitionStatus.RETURNED
-    elif processor_user.role == UserRole.HOD and req.department_id == processor_user.department_id:
-        req.status = RequisitionStatus.RETURNED
-    else:
+    if current_user.role not in (UserRole.CNP_HOD, UserRole.PROCUREMENT_OFFICER, UserRole.OIC):
         raise HTTPException(403, "You do not have permission to return this requisition")
 
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Requisition not found")
+
+    reason = body.reason or "Returned for clarification"
+    req.status = RequisitionStatus.RETURNED
+    req.return_reason = reason
+    req.returned_to_indentor = True
+    req.current_owner_id = req.creator_id
+
     await db.commit()
     await db.refresh(req)
     return req
 
 
-@router.post("/{req_id}/approve", response_model=RequisitionOut)
-async def approve_req(
+@router.post("/{req_id}/assign-to-procurement", response_model=RequisitionOut)
+async def assign_to_procurement(
     req_id: UUID,
-    assign_to: UUID | None = None,
-    processor_user: User = Depends(require_role(UserRole.HOD, UserRole.CNP_HOD)),
+    body: WorkflowAction = WorkflowAction(),
+    current_user: User = Depends(require_role(UserRole.CNP_HOD, UserRole.OIC)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Requisition not found")
+    if req.status not in (RequisitionStatus.SUBMITTED, RequisitionStatus.UNDER_REVIEW):
+        raise HTTPException(400, "Requisition must be under review before assigning")
+
+    if body.assign_to:
+        req.current_owner_id = body.assign_to
+    else:
+        po_result = await db.execute(
+            select(User).where(User.role == UserRole.PROCUREMENT_OFFICER, User.is_active == True)
+        )
+        po = po_result.scalars().first()
+        if po:
+            req.current_owner_id = po.id
+
+    req.status = RequisitionStatus.PROCESSING
+    req.assigned_to_procurement = True
+    req.hodi_cnp_approval = "Approved"
+
+    await db.commit()
+    await db.refresh(req)
+    return req
+
+
+@router.post("/{req_id}/process", response_model=RequisitionOut)
+async def process_req(
+    req_id: UUID,
+    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Requisition not found")
+    if req.status not in (RequisitionStatus.PROCESSING, RequisitionStatus.UNDER_REVIEW):
+        raise HTTPException(400, "Requisition is not ready for processing")
+
+    req.status = RequisitionStatus.PROCESSING
+    req.current_owner_id = current_user.id
+
+    await db.commit()
+    await db.refresh(req)
+    return req
+
+
+@router.post("/{req_id}/cancel", response_model=RequisitionOut)
+async def cancel_req(
+    req_id: UUID,
+    body: WorkflowAction = WorkflowAction(),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
@@ -207,30 +384,35 @@ async def approve_req(
     if not req:
         raise HTTPException(404, "Requisition not found")
 
-    if assign_to:
-        req.current_owner_id = assign_to
-    elif processor_user.role == UserRole.CNP_HOD:
-        req.current_owner_id = processor_user.id
-
-    req.status = RequisitionStatus.UNDER_REVIEW
-    await db.commit()
-    await db.refresh(req)
-    return req
-
-
-@router.post("/{req_id}/reject", response_model=RequisitionOut)
-async def reject_req(
-    req_id: UUID,
-    reason: str | None = None,
-    processor_user: User = Depends(require_role(UserRole.HOD, UserRole.CNP_HOD)),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
-    if not req:
-        raise HTTPException(404, "Requisition not found")
+    if current_user.role == UserRole.INDENTOR:
+        if req.status not in (RequisitionStatus.DRAFT, RequisitionStatus.RETURNED):
+            raise HTTPException(400, "Can only cancel draft or returned requisitions")
+    elif current_user.role != UserRole.ADMIN:
+        raise HTTPException(403, "Only indentor or admin can cancel this requisition")
 
     req.status = RequisitionStatus.CANCELLED
+    if body.reason:
+        req.return_reason = body.reason
+
+    await db.commit()
+    await db.refresh(req)
+    return req
+
+
+@router.post("/{req_id}/complete", response_model=RequisitionOut)
+async def complete_req(
+    req_id: UUID,
+    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC, UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Requisition not found")
+    if req.status not in (RequisitionStatus.ORDER_CREATED, RequisitionStatus.RECEIVING, RequisitionStatus.INSPECTION_PENDING):
+        raise HTTPException(400, "Requisition is not ready for completion")
+
+    req.status = RequisitionStatus.COMPLETED
     await db.commit()
     await db.refresh(req)
     return req

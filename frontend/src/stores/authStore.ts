@@ -74,22 +74,77 @@ export function getUserRoleLabel(role: UserRole): string {
   return labels[role] || role
 }
 
-export function canAccessAdmin(role: UserRole): boolean {
-  return role === 'admin'
+export function canAccess(role: UserRole, feature: string): boolean {
+  const permissions: Record<UserRole, string[]> = {
+    admin: ['dashboard', 'requisitions', 'tenders', 'vendors', 'orders', 'receiving', 'messages', 'department', 'admin_users', 'inventory', 'profile'],
+    oic: ['dashboard', 'requisitions', 'tenders', 'vendors', 'orders', 'receiving', 'messages', 'department', 'inventory', 'profile'],
+    cnp_hod: ['dashboard', 'requisitions', 'tenders', 'vendors', 'orders', 'receiving', 'messages', 'department', 'inventory', 'profile'],
+    procurement_officer: ['dashboard', 'requisitions', 'tenders', 'vendors', 'orders', 'receiving', 'messages', 'department', 'profile'],
+    hod: ['dashboard', 'requisitions', 'messages', 'department', 'profile'],
+    inventory_manager: ['dashboard', 'requisitions', 'orders', 'receiving', 'messages', 'department', 'inventory', 'profile'],
+    indentor: ['dashboard', 'requisitions', 'vendors', 'messages', 'department', 'profile'],
+  }
+  return (permissions[role] || []).includes(feature)
 }
 
 export function canCreateRequisition(role: UserRole): boolean {
-  return ['indentor', 'hod', 'cnp_hod', 'procurement_officer', 'admin'].includes(role)
+  return ['indentor', 'hod', 'cnp_hod', 'procurement_officer', 'admin', 'oic'].includes(role)
 }
 
-export function canApproveRequisition(role: UserRole): boolean {
-  return ['hod', 'cnp_hod', 'procurement_officer', 'admin'].includes(role)
+export function canEditRequisition(role: UserRole, status: string, isCreator: boolean): boolean {
+  if (role === 'admin') return true
+  if (role === 'indentor' && isCreator) return status === 'draft' || status === 'returned'
+  if (['cnp_hod', 'procurement_officer', 'oic'].includes(role)) {
+    return !['completed', 'cancelled'].includes(status)
+  }
+  return false
+}
+
+export function canDeleteRequisition(role: UserRole): boolean {
+  return role === 'admin'
+}
+
+export function canSubmitRequisition(role: UserRole, status: string, isCreator: boolean): boolean {
+  if (role !== 'indentor' || !isCreator) return false
+  return status === 'draft' || status === 'returned'
+}
+
+export function canReviewRequisition(role: UserRole): boolean {
+  return ['cnp_hod', 'oic'].includes(role)
+}
+
+export function canReturnRequisition(role: UserRole): boolean {
+  return ['cnp_hod', 'procurement_officer', 'oic'].includes(role)
+}
+
+export function canAssignToProcurement(role: UserRole): boolean {
+  return ['cnp_hod', 'oic'].includes(role)
+}
+
+export function canProcessRequisition(role: UserRole): boolean {
+  return ['procurement_officer', 'cnp_hod', 'oic'].includes(role)
+}
+
+export function canCreateTender(role: UserRole): boolean {
+  return ['procurement_officer', 'cnp_hod', 'oic'].includes(role)
+}
+
+export function canAwardBid(role: UserRole): boolean {
+  return ['procurement_officer', 'cnp_hod', 'oic'].includes(role)
 }
 
 export function canManageVendors(role: UserRole): boolean {
-  return ['cnp_hod', 'procurement_officer', 'admin'].includes(role)
+  return ['indentor', 'cnp_hod', 'procurement_officer', 'admin', 'oic'].includes(role)
 }
 
 export function canManageOrders(role: UserRole): boolean {
-  return ['procurement_officer', 'cnp_hod', 'admin'].includes(role)
+  return ['procurement_officer', 'cnp_hod', 'admin', 'oic', 'inventory_manager'].includes(role)
+}
+
+export function canAccessInventory(role: UserRole): boolean {
+  return ['inventory_manager', 'cnp_hod', 'admin', 'oic'].includes(role)
+}
+
+export function canCompleteRequisition(role: UserRole): boolean {
+  return ['procurement_officer', 'cnp_hod', 'oic', 'admin'].includes(role)
 }

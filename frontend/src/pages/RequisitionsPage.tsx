@@ -14,7 +14,7 @@ import {
     Search, Plus, FileText, Clock, CheckCircle, User, Calendar,
     Send, Layers, Eye, LayoutGrid, List, ChevronLeft, ChevronRight,
     X, Package, Download, RefreshCw, Settings, Filter,
-    Grid3X3, Table2, Zap
+    Grid3X3, Table2, Zap, ClipboardList, Shield, Check
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
@@ -87,55 +87,65 @@ function RightSidebar({
     onViewModeChange?: (mode: 'table' | 'grid') => void;
 }) {
     return (
-        <div className="p-4 space-y-3">
-            <div className="p-4 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 rounded-xl border border-slate-200/60">
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Quick Actions</h3>
-                <div className="space-y-1.5">
-                    <button onClick={onCreate} className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all duration-200 border border-transparent">
-                        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-                            <Plus size={14} className="text-indigo-500" />
+        <div className="p-4 space-y-4">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Actions</h3>
+                </div>
+                <div className="p-3 space-y-2">
+                    {onCreate && (
+                        <button onClick={onCreate} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-indigo-200">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-sm">
+                                <Plus size={14} className="text-white" />
+                            </div>
+                            <span className="text-sm font-semibold">Create Requisition</span>
+                        </button>
+                    )}
+                    <Link to="/requisitions" className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-50 to-cyan-100/50 text-cyan-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-cyan-200 no-underline">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-sm">
+                            <FileText size={14} className="text-white" />
                         </div>
-                        <span className="text-sm font-medium">Create New</span>
-                    </button>
-                    <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                            <RefreshCw size={14} className="text-slate-500" />
+                        <span className="text-sm font-semibold">View All</span>
+                    </Link>
+                    <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100/50 text-amber-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-amber-200">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-sm">
+                            <Download size={14} className="text-white" />
                         </div>
-                        <span className="text-sm font-medium">Refresh</span>
-                    </button>
-                    <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                            <Download size={14} className="text-slate-500" />
-                        </div>
-                        <span className="text-sm font-medium">Export</span>
+                        <span className="text-sm font-semibold">Export Report</span>
                     </button>
                 </div>
             </div>
 
-            <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">View Mode</h3>
-                <div className="flex gap-2">
-                    <button onClick={() => onViewModeChange?.('table')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'table' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}>
-                        <Table2 size={14} /> Table
-                    </button>
-                    <button onClick={() => onViewModeChange?.('grid')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${viewMode === 'grid' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}>
-                        <Grid3X3 size={14} /> Grid
-                    </button>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">View Mode</h3>
+                </div>
+                <div className="p-3">
+                    <div className="flex gap-2">
+                        <button onClick={() => onViewModeChange?.('table')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${viewMode === 'table' ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/20' : 'text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'}`}>
+                            <Table2 size={14} /> Table
+                        </button>
+                        <button onClick={() => onViewModeChange?.('grid')} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${viewMode === 'grid' ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/20' : 'text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300'}`}>
+                            <Grid3X3 size={14} /> Grid
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Filter by Status</h3>
-                <div className="space-y-1">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="p-3 bg-gradient-to-r from-indigo-500/5 to-violet-500/5 border-b border-slate-100/50">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filter by Status</h3>
+                </div>
+                <div className="p-3 space-y-1.5">
                     {statusOptions.slice(0, 5).map((s) => {
                         const isActive = currentStatus === s.value
                         return (
                             <button 
                                 key={s.value} 
                                 onClick={() => onStatusFilter(s.value)} 
-                                className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left text-sm font-medium transition-all duration-200 ${isActive ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent'}`}
+                                className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-left text-sm font-medium transition-all duration-200 ${isActive ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 border border-indigo-200 shadow-sm' : 'text-slate-500 hover:bg-slate-50 border border-transparent hover:border-slate-200'}`}
                             >
-                                <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+                                <div className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${isActive ? 'bg-indigo-500 shadow-sm shadow-indigo-500/50 scale-110' : 'bg-slate-300'}`} />
                                 {s.label}
                             </button>
                         )
@@ -159,7 +169,7 @@ function RequisitionCard({ req }: { req: any }) {
                     </div>
                     <div>
                         <span className="text-indigo-600 text-sm font-bold">{req.requisition_no}</span>
-                        <p className="text-xs text-slate-400">{req.category || 'General'}</p>
+                        <p className="text-xs text-slate-400">{req.financial_year || req.category || 'General'}</p>
                     </div>
                 </div>
                 <Badge 
@@ -174,13 +184,12 @@ function RequisitionCard({ req }: { req: any }) {
                     {req.status?.replace('_', ' ')}
                 </Badge>
             </div>
-            <h3 className="text-base font-bold text-slate-700 group-hover:text-indigo-600 transition-colors line-clamp-2">{req.title}</h3>
+            <h3 className="text-base font-bold text-slate-700 group-hover:text-indigo-600 transition-colors line-clamp-2">{req.title || req.job_description?.slice(0, 50) || '-'}</h3>
             <div className="flex items-center justify-between pt-3 border-t border-slate-100/50">
                 <div className="flex items-center gap-2">
-                    <Calendar size={14} className="text-slate-400" />
-                    <span className="text-xs text-slate-500">{req.created_at ? new Date(req.created_at).toLocaleDateString() : '-'}</span>
+                    <span className="text-xs font-mono text-slate-400">{req.sap_requisition_number || '-'}</span>
                 </div>
-                <span className="text-lg font-extrabold text-slate-700">${req.total_estimate?.toLocaleString() || '0'}</span>
+                <span className="text-lg font-extrabold text-slate-700">₹{(req.cost_estimate || req.total_estimate)?.toLocaleString() || '0'}</span>
             </div>
         </Link>
     )
@@ -188,17 +197,30 @@ function RequisitionCard({ req }: { req: any }) {
 
 export default function RequisitionsPage() {
     const user = useAuthStore((s) => s.user)
+    const role = user?.role || 'indentor'
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState<string>('all')
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
     const [page, setPage] = useState(1)
     const [showModal, setShowModal] = useState(false)
     const [formData, setFormData] = useState({
-        title: '', description: '', category: 'materials', priority: 'Medium', quantity: '1',
+        description: '', category: 'materials', priority: 'Medium', quantity: '1',
         unit_price_estimate: '', total_estimate: '',
+        financial_year: 'FY 2025-2026',
+        sap_requisition_number: '',
+        requisition_create_date: new Date().toISOString().split('T')[0],
+        requisition_hod_release_date: '',
+        job_description: '',
+        cost_estimate: '',
+        startup_applicable: false,
+        industry: '',
+        sector: '',
+        contract_period_months: '',
     })
     const queryClient = useQueryClient()
     const pageSize = 12
+
+    const canCreate = ['indentor', 'hod', 'cnp_hod', 'procurement_officer', 'admin', 'oic'].includes(role)
 
     const { data: reqsResponse, isLoading } = useQuery({
         queryKey: ['requisitions', statusFilter, page, search],
@@ -213,7 +235,7 @@ export default function RequisitionsPage() {
         mutationFn: (data: any) => api.requisitions.create(data),
         onSuccess: () => {
             setShowModal(false)
-            setFormData({ title: '', description: '', category: 'materials', priority: 'Medium', quantity: '1', unit_price_estimate: '', total_estimate: '' })
+            setFormData({ description: '', category: 'materials', priority: 'Medium', quantity: '1', unit_price_estimate: '', total_estimate: '', financial_year: 'FY 2025-2026', sap_requisition_number: '', requisition_create_date: new Date().toISOString().split('T')[0], requisition_hod_release_date: '', job_description: '', cost_estimate: '', startup_applicable: false, industry: '', sector: '', contract_period_months: '' })
             queryClient.invalidateQueries({ queryKey: ['requisitions'] })
         },
     })
@@ -233,31 +255,45 @@ export default function RequisitionsPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
+        if (formData.sap_requisition_number && !/^\d{8}$/.test(formData.sap_requisition_number)) {
+            return
+        }
         const payload = {
             ...formData,
+            title: formData.job_description.slice(0, 50) || `Requisition ${formData.sap_requisition_number}`,
+            description: formData.job_description,
             quantity: parseInt(formData.quantity) || 1,
             unit_price_estimate: parseFloat(formData.unit_price_estimate) || undefined,
             total_estimate: parseFloat(formData.total_estimate) || undefined,
+            cost_estimate: parseFloat(formData.cost_estimate) || undefined,
+            contract_period_months: formData.contract_period_months ? parseInt(formData.contract_period_months) : undefined,
+            requisition_create_date: formData.requisition_create_date ? new Date(formData.requisition_create_date).toISOString() : undefined,
+            requisition_hod_release_date: formData.requisition_hod_release_date ? new Date(formData.requisition_hod_release_date).toISOString() : undefined,
         }
         createMut.mutate(payload)
     }
 
+    const integrityPact = (parseFloat(formData.cost_estimate) || 0) > 10000000
+
+    const fileReferencePreview = formData.financial_year && formData.sap_requisition_number && /^\d{8}$/.test(formData.sap_requisition_number)
+        ? (() => {
+            const yearPart = formData.financial_year.replace(/^FY\s*/, '')
+            return `GAIL/HZR/CNP/${yearPart}/${formData.sap_requisition_number}/0001`
+          })()
+        : ''
+
+    const userDepartment = user?.department_name || ''
+
     return (
         <PageLayout
-            title="Requisitions"
             rightSidebar={
                 <RightSidebar 
                     onStatusFilter={(s) => { setStatusFilter(s); setPage(1); }} 
                     currentStatus={statusFilter}
-                    onCreate={() => setShowModal(true)}
+                    onCreate={canCreate ? () => setShowModal(true) : undefined}
                     viewMode={viewMode}
                     onViewModeChange={setViewMode}
                 />
-            }
-            actions={
-                <Button variant="primary" onClick={() => setShowModal(true)} className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-lg shadow-indigo-500/20 btn-shine">
-                    <Plus size={18} /> New Requisition
-                </Button>
             }
         >
             <div className="max-w-7xl mx-auto space-y-6">
@@ -337,11 +373,6 @@ export default function RequisitionsPage() {
                             title="No requisitions found"
                             description="Create a new requisition to get started"
                         />
-                        <div className="mt-4">
-                            <Button variant="primary" onClick={() => setShowModal(true)} className="bg-gradient-to-r from-indigo-500 to-violet-500">
-                                <Plus size={18} /> Create Requisition
-                            </Button>
-                        </div>
                     </Card>
                 ) : viewMode === 'table' ? (
                     <Card className="overflow-hidden border border-slate-100/50 bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-200/10">
@@ -350,10 +381,12 @@ export default function RequisitionsPage() {
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100/50">
                                         <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-32">Req No</th>
-                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Title</th>
+                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Title / Job</th>
+                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-32">FY</th>
+                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-28">SAP No</th>
                                         <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-28">Priority</th>
                                         <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-32">Status</th>
-                                        <th className="px-5 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider w-28">Amount</th>
+                                        <th className="px-5 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider w-28">Cost</th>
                                         <th className="px-5 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider w-20">Actions</th>
                                     </tr>
                                 </thead>
@@ -371,9 +404,15 @@ export default function RequisitionsPage() {
                                             </td>
                                             <td className="px-5 py-3 align-middle">
                                                 <div>
-                                                    <p className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">{req.title}</p>
+                                                    <p className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">{req.title || req.job_description?.slice(0, 40) || '-'}</p>
                                                     <p className="text-xs text-slate-400">{req.category || 'General'}</p>
                                                 </div>
+                                            </td>
+                                            <td className="px-5 py-3 align-middle">
+                                                <span className="text-xs font-semibold text-slate-600">{req.financial_year || '-'}</span>
+                                            </td>
+                                            <td className="px-5 py-3 align-middle">
+                                                <span className="text-xs font-mono font-semibold text-slate-600">{req.sap_requisition_number || '-'}</span>
                                             </td>
                                             <td className="px-5 py-3 align-middle">
                                                 <span className={cn('px-3 py-1.5 rounded-lg text-xs font-bold border', priorityColors[req.priority] || priorityColors.Medium)}>
@@ -396,7 +435,7 @@ export default function RequisitionsPage() {
                                                 </Badge>
                                             </td>
                                             <td className="px-5 py-3 align-middle text-right">
-                                                <span className="text-sm font-bold text-slate-700">${req.total_estimate?.toLocaleString() || '0'}</span>
+                                                <span className="text-sm font-bold text-slate-700">₹{(req.cost_estimate || req.total_estimate)?.toLocaleString() || '0'}</span>
                                             </td>
                                             <td className="px-5 py-3 align-middle text-center">
                                                 <Link 
@@ -435,41 +474,235 @@ export default function RequisitionsPage() {
                 )}
                 </FadeIn>
 
-                <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Create New Requisition" size="lg">
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <FormField label="Title *" required>
-                            <Input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required placeholder="Enter requisition title" />
-                        </FormField>
-                        <FormField label="Description">
-                            <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} placeholder="Describe the requirement" />
-                        </FormField>
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField label="Category">
-                                <Select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-                                    <option value="materials">Materials</option>
-                                    <option value="equipment">Equipment</option>
-                                    <option value="services">Services</option>
-                                </Select>
-                            </FormField>
-                            <FormField label="Priority">
-                                <Select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
-                                    <option value="Low">Low</option>
-                                    <option value="Medium">Medium</option>
-                                    <option value="High">High</option>
-                                </Select>
-                            </FormField>
+                <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Create New Requisition" size="xl">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Basic Information Section */}
+                        <div className="bg-gradient-to-r from-indigo-500/5 to-violet-500/5 rounded-xl p-4 border border-indigo-100/50">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-sm">
+                                    <FileText size={14} className="text-white" />
+                                </div>
+                                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Basic Information</h3>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <FormField label="Category">
+                                    <Select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="rounded-lg border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 text-sm">
+                                        <option value="materials">Materials</option>
+                                        <option value="equipment">Equipment</option>
+                                        <option value="services">Services</option>
+                                    </Select>
+                                </FormField>
+                                <FormField label="Priority">
+                                    <Select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="rounded-lg border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 text-sm">
+                                        <option value="Low">Low</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="High">High</option>
+                                    </Select>
+                                </FormField>
+                                <FormField label="Quantity">
+                                    <Input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} min={1} className="rounded-lg border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 text-sm" />
+                                </FormField>
+                            </div>
+                            <div className="mt-3">
+                                <FormField label="Department">
+                                    <Input type="text" value={userDepartment} disabled className="bg-slate-50/80 rounded-lg border-slate-200 text-slate-500 text-sm" />
+                                </FormField>
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField label="Quantity">
-                                <Input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} min={1} />
-                            </FormField>
-                            <FormField label="Estimated Amount ($)">
-                                <Input type="number" value={formData.total_estimate} onChange={(e) => setFormData({ ...formData, total_estimate: e.target.value })} placeholder="0.00" />
-                            </FormField>
+
+                        {/* Reference & Dates Section */}
+                        <div className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 rounded-xl p-4 border border-amber-100/50">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-sm">
+                                    <Calendar size={14} className="text-white" />
+                                </div>
+                                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Reference & Dates</h3>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <FormField label="Financial Year">
+                                    <Select value={formData.financial_year} onChange={(e) => setFormData({ ...formData, financial_year: e.target.value })} className="rounded-lg border-slate-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 text-sm">
+                                        <option value="FY 2023-2024">FY 2023-2024</option>
+                                        <option value="FY 2024-2025">FY 2024-2025</option>
+                                        <option value="FY 2025-2026">FY 2025-2026</option>
+                                        <option value="FY 2026-2027">FY 2026-2027</option>
+                                    </Select>
+                                </FormField>
+                                <FormField label="SAP Requisition Number">
+                                    <div className="relative">
+                                        <Input
+                                            type="text"
+                                            value={formData.sap_requisition_number}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 8)
+                                                setFormData({ ...formData, sap_requisition_number: val })
+                                            }}
+                                            placeholder="12345678"
+                                            maxLength={8}
+                                            className="rounded-lg border-slate-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 font-mono tracking-wider text-sm"
+                                        />
+                                        {formData.sap_requisition_number && (
+                                            <div className={cn(
+                                                'absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold',
+                                                formData.sap_requisition_number.length === 8 ? 'text-emerald-500' : 'text-red-500'
+                                            )}>
+                                                {formData.sap_requisition_number.length}/8
+                                            </div>
+                                        )}
+                                    </div>
+                                    {formData.sap_requisition_number && formData.sap_requisition_number.length !== 8 && (
+                                        <p className="text-[10px] text-red-500 mt-0.5">Must be exactly 8 digits</p>
+                                    )}
+                                </FormField>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                <FormField label="Create Date">
+                                    <Input
+                                        type="date"
+                                        value={formData.requisition_create_date}
+                                        onChange={(e) => setFormData({ ...formData, requisition_create_date: e.target.value })}
+                                        className="rounded-lg border-slate-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 text-sm"
+                                    />
+                                </FormField>
+                                <FormField label="HoD Release Date">
+                                    <Input
+                                        type="date"
+                                        value={formData.requisition_hod_release_date}
+                                        onChange={(e) => setFormData({ ...formData, requisition_hod_release_date: e.target.value })}
+                                        className="rounded-lg border-slate-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 text-sm"
+                                    />
+                                </FormField>
+                            </div>
+                            {fileReferencePreview && (
+                                <div className="mt-3 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                                    <p className="text-[10px] text-slate-400 font-medium">File Reference</p>
+                                    <p className="text-xs font-bold text-slate-700 font-mono truncate">{fileReferencePreview}</p>
+                                </div>
+                            )}
                         </div>
-                        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-                            <Button type="submit" disabled={createMut.isPending} variant="primary" loading={createMut.isPending} className="bg-gradient-to-r from-indigo-500 to-violet-500">
+
+                        {/* Job Details Section */}
+                        <div className="bg-gradient-to-r from-emerald-500/5 to-emerald-100/50 rounded-xl p-4 border border-emerald-100/50">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                                    <ClipboardList size={14} className="text-white" />
+                                </div>
+                                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Job Details</h3>
+                            </div>
+                            <FormField label="Job Description">
+                                <Textarea
+                                    value={formData.job_description}
+                                    onChange={(e) => setFormData({ ...formData, job_description: e.target.value.slice(0, 300) })}
+                                    rows={2}
+                                    placeholder="Brief job description"
+                                    className="rounded-lg border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 resize-none text-sm"
+                                />
+                                <div className="flex items-center justify-between mt-1">
+                                    <p className="text-[10px] text-slate-400">Max 300 chars</p>
+                                    <p className={cn('text-[10px] font-bold', formData.job_description.length >= 280 ? 'text-red-500' : 'text-slate-400')}>{formData.job_description.length}/300</p>
+                                </div>
+                            </FormField>
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                <FormField label="Cost Estimate">
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-sm">₹</span>
+                                        <Input
+                                            type="number"
+                                            value={formData.cost_estimate}
+                                            onChange={(e) => setFormData({ ...formData, cost_estimate: e.target.value })}
+                                            placeholder="0.00"
+                                            className="rounded-lg border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 pl-7 text-sm"
+                                        />
+                                    </div>
+                                </FormField>
+                                <FormField label="Contract Period (Months)">
+                                    <Input
+                                        type="number"
+                                        value={formData.contract_period_months}
+                                        onChange={(e) => setFormData({ ...formData, contract_period_months: e.target.value })}
+                                        placeholder="12"
+                                        min={1}
+                                        className="rounded-lg border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 text-sm"
+                                    />
+                                </FormField>
+                            </div>
+                        </div>
+
+                        {/* Startup & Compliance Section */}
+                        <div className="bg-gradient-to-r from-violet-500/5 to-purple-500/5 rounded-xl p-4 border border-violet-100/50">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
+                                    <Shield size={14} className="text-white" />
+                                </div>
+                                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Startup & Compliance</h3>
+                            </div>
+                            <div className={cn(
+                                'p-3 rounded-lg border transition-all duration-200 cursor-pointer mb-3',
+                                formData.startup_applicable 
+                                    ? 'bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200 shadow-sm' 
+                                    : 'bg-white border-slate-200 hover:border-violet-200'
+                            )} onClick={() => setFormData({ ...formData, startup_applicable: !formData.startup_applicable, industry: !formData.startup_applicable ? formData.industry : '', sector: !formData.startup_applicable ? formData.sector : '' })}>
+                                <div className="flex items-center gap-2">
+                                    <div className={cn(
+                                        'w-4 h-4 rounded border-2 flex items-center justify-center transition-all',
+                                        formData.startup_applicable ? 'bg-violet-500 border-violet-500' : 'border-slate-300'
+                                    )}>
+                                        {formData.startup_applicable && <Check size={10} className="text-white" />}
+                                    </div>
+                                    <span className="text-xs font-semibold text-slate-700">Startup Applicable</span>
+                                </div>
+                            </div>
+                            {formData.startup_applicable && (
+                                <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-gradient-to-r from-violet-50/50 to-purple-50/50 border border-violet-100 mb-3">
+                                    <FormField label="Industry" required>
+                                        <Input
+                                            type="text"
+                                            value={formData.industry}
+                                            onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                                            placeholder="Enter industry"
+                                            className="rounded-lg border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20 text-sm"
+                                        />
+                                    </FormField>
+                                    <FormField label="Sector" required>
+                                        <Input
+                                            type="text"
+                                            value={formData.sector}
+                                            onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                                            placeholder="Enter sector"
+                                            className="rounded-lg border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20 text-sm"
+                                        />
+                                    </FormField>
+                                </div>
+                            )}
+                            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                            'w-7 h-7 rounded-lg flex items-center justify-center',
+                                            integrityPact ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-slate-200 to-slate-300'
+                                        )}>
+                                            <Shield size={14} className="text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-medium">Integrity Pact</p>
+                                            <p className={cn('text-xs font-bold', integrityPact ? 'text-amber-600' : 'text-slate-500')}>
+                                                {integrityPact ? 'Required (> ₹1 Cr)' : 'Not Required'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className={cn(
+                                        'px-2 py-1 rounded text-[10px] font-bold',
+                                        integrityPact ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                                    )}>
+                                        {integrityPact ? 'YES' : 'NO'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Submit Buttons */}
+                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                            <Button variant="secondary" onClick={() => setShowModal(false)} className="rounded-lg px-5 text-sm">Cancel</Button>
+                            <Button type="submit" disabled={createMut.isPending || !!(formData.sap_requisition_number && formData.sap_requisition_number.length !== 8)} variant="primary" loading={createMut.isPending} className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-lg shadow-indigo-500/20 rounded-lg px-6 text-sm">
                                 {createMut.isPending ? 'Creating...' : 'Create Requisition'}
                             </Button>
                         </div>

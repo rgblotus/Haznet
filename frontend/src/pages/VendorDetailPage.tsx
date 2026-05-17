@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Building2, Mail, Phone, MapPin, Star, Edit, Printer, TrendingUp, Clock, User, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const statusFlow = [
     { key: 'inactive', label: 'Inactive', icon: Building2 },
@@ -53,13 +54,10 @@ export default function VendorDetailPage() {
         <PageLayout 
             title="Vendor Details"
             actions={
-                <div className="flex gap-3">
-                    <Button variant="secondary" size="sm" className="bg-white/80 backdrop-blur-sm border border-slate-200/50">
-                        <Printer size={16} /> Print
-                    </Button>
-                    <Button variant="primary" size="sm" className="bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20 btn-shine">
-                        <Edit size={16} /> Edit
-                    </Button>
+                <div className="flex items-center gap-3">
+                    <Link to="/vendors" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all">
+                        <ArrowLeft size={14} /> Back
+                    </Link>
                 </div>
             }
         >
@@ -211,79 +209,96 @@ export default function VendorDetailPage() {
                     </FadeIn>
                 </div>
 
-                <div className="space-y-6">
-                    <FadeIn delay={0.15}>
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-100/50 shadow-lg shadow-slate-200/10">
-                            <h2 className="text-sm font-bold text-slate-700 mb-5 flex items-center gap-2">
-                                <Clock size={16} className="text-emerald-500" />
-                                Status Timeline
-                            </h2>
-                            <div className="flex flex-col gap-0">
-                                {statusFlow.map((status, i) => {
-                                    const isCompleted = i <= currentStatusIndex
-                                    const isCurrent = i === currentStatusIndex
-                                    const Icon = status.icon
-                                    return (
-                                        <div key={status.key} className="flex items-start gap-3 relative">
-                                            {i < statusFlow.length - 1 && (
-                                                <div className={`absolute left-4 top-8 -bottom-3 w-0.5 ${isCompleted ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                                            )}
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${isCurrent ? 'ring-2 ring-emerald-400' : ''} ${isCompleted ? 'bg-emerald-500' : 'bg-slate-100'}`}>
-                                                <Icon size={14} className={isCompleted ? 'text-white' : 'text-slate-400'} />
-                                            </div>
-                                            <div className="flex-1 pb-5">
-                                                <p className={`text-sm ${isCompleted ? 'text-slate-700 font-medium' : 'text-slate-400'} ${isCurrent ? 'font-semibold' : ''}`}>{status.label}</p>
-                                            </div>
+                <div className="space-y-4">
+                    {/* Quick Actions */}
+                    <FadeIn>
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                            <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</h2>
+                            </div>
+                            <div className="p-3 space-y-2">
+                                <Link to={`/vendors/${id}/edit`} className="no-underline">
+                                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 text-emerald-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-emerald-200">
+                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                                            <Edit size={14} className="text-white" />
                                         </div>
-                                    )
-                                })}
+                                        <span className="text-sm font-semibold">Edit Vendor</span>
+                                    </div>
+                                </Link>
+                                <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-50 to-cyan-100/50 text-cyan-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-cyan-200 w-full">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-sm">
+                                        <Mail size={14} className="text-white" />
+                                    </div>
+                                    <span className="text-sm font-semibold">Contact</span>
+                                </button>
                             </div>
                         </div>
                     </FadeIn>
 
+                    {/* Status */}
+                    <FadeIn delay={0.1}>
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                            <div className="p-3 bg-gradient-to-r from-emerald-500/5 to-emerald-100/50 border-b border-slate-100/50">
+                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</h2>
+                            </div>
+                            <div className="p-3 space-y-1.5">
+                                <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">Status</span>
+                                    <span className={cn(
+                                        'text-xs font-bold px-2 py-0.5 rounded-md',
+                                        vendor.status?.toLowerCase() === 'active' ? 'bg-emerald-50 text-emerald-600' :
+                                        vendor.status?.toLowerCase() === 'suspended' ? 'bg-red-50 text-red-600' :
+                                        'bg-slate-100 text-slate-500'
+                                    )}>
+                                        {vendor.status || 'Inactive'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">Category</span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">{vendor.category || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+
+                    {/* Performance */}
+                    <FadeIn delay={0.15}>
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                            <div className="p-3 bg-gradient-to-r from-amber-500/5 to-amber-100/50 border-b border-slate-100/50">
+                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Performance</h2>
+                            </div>
+                            <div className="p-3 space-y-1.5">
+                                <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/50">
+                                    <span className="text-xs text-emerald-600 font-medium">On-time</span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700">95%</span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50/50">
+                                    <span className="text-xs text-amber-600 font-medium">Rating</span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">{vendor.rating || 4.5}/5</span>
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+
+                    {/* Contact Info */}
                     <FadeIn delay={0.2}>
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-100/50 shadow-lg shadow-slate-200/10">
-                            <h2 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                <TrendingUp size={16} className="text-emerald-500" />
-                                Performance
-                            </h2>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                                        <TrendingUp size={18} className="text-white" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-700">95%</p>
-                                        <p className="text-xs text-slate-400">On-time Delivery</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-                                        <Star size={18} className="text-white" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-700">{vendor.rating || 4.5}/5</p>
-                                        <p className="text-xs text-slate-400">Average Rating</p>
-                                    </div>
-                                </div>
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                            <div className="p-3 bg-gradient-to-r from-violet-500/5 to-violet-100/50 border-b border-slate-100/50">
+                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</h2>
                             </div>
-                        </div>
-                    </FadeIn>
-
-                    <FadeIn delay={0.25}>
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-100/50 shadow-lg shadow-slate-200/10">
-                            <h2 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                <User size={16} className="text-violet-500" />
-                                Account Manager
-                            </h2>
-                            <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-violet-50 to-violet-100/50 rounded-xl">
-                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
-                                    <User size={20} className="text-white" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-700">John Smith</p>
-                                    <p className="text-xs text-slate-400">Procurement Team</p>
-                                </div>
+                            <div className="p-3 space-y-1.5">
+                                {vendor.email && (
+                                    <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50/50">
+                                        <Mail size={12} className="text-slate-400 shrink-0" />
+                                        <span className="text-xs text-slate-600 truncate">{vendor.email}</span>
+                                    </div>
+                                )}
+                                {vendor.phone && (
+                                    <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50/50">
+                                        <Phone size={12} className="text-slate-400 shrink-0" />
+                                        <span className="text-xs text-slate-600">{vendor.phone}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </FadeIn>

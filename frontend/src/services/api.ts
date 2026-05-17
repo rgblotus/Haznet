@@ -134,14 +134,43 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/requisitions/${id}`, { method: 'DELETE' }),
     submit: (id: string) =>
       request<Requisition>(`/requisitions/${id}/submit`, { method: 'POST' }),
-    approve: (id: string, assignTo?: string) =>
-      request<Requisition>(`/requisitions/${id}/approve${assignTo ? `?assign_to=${assignTo}` : ''}`, { method: 'POST' }),
-    reject: (id: string, reason?: string) =>
-      request<Requisition>(`/requisitions/${id}/reject${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, { method: 'POST' }),
-    returnReq: (id: string, reason?: string) =>
-      request<Requisition>(`/requisitions/${id}/return${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, { method: 'POST' }),
+    review: (id: string, data?: { reason?: string }) =>
+      request<Requisition>(`/requisitions/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    returnReq: (id: string, data?: { reason?: string }) =>
+      request<Requisition>(`/requisitions/${id}/return`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    assignToProcurement: (id: string) =>
+      request<Requisition>(`/requisitions/${id}/assign-to-procurement`, { method: 'POST' }),
+    process: (id: string) =>
+      request<Requisition>(`/requisitions/${id}/process`, { method: 'POST' }),
+    complete: (id: string) =>
+      request<Requisition>(`/requisitions/${id}/complete`, { method: 'POST' }),
+  },
+
+  documents: {
+    list: (reqId: string) => request<any[]>(`/documents/${reqId}`),
+    upload: async (reqId: string, file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const token = localStorage.getItem('token')
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/documents/${reqId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      if (!res.ok) throw new Error('Upload failed')
+      return res.json()
+    },
+    delete: (docId: string) => request<{ message: string }>(`/documents/${docId}`, { method: 'DELETE' }),
   },
 
   tenders: {
@@ -157,8 +186,11 @@ export const api = {
       request<Tender>('/tenders', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Tender>) =>
       request<Tender>(`/tenders/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/tenders/${id}`, { method: 'DELETE' }),
     publish: (id: string) =>
       request<Tender>(`/tenders/${id}/publish`, { method: 'POST' }),
+    getBids: (id: string) => request<Bid[]>(`/tenders/${id}/bids`),
     bids: (id: string) => request<Bid[]>(`/tenders/${id}/bids`),
     createBid: (tenderId: string, data: Partial<Bid>) =>
       request<Bid>(`/tenders/${tenderId}/bids`, { method: 'POST', body: JSON.stringify(data) }),

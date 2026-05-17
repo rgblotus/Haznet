@@ -10,7 +10,7 @@ import { EmptyState, TableSkeleton, CardSkeleton } from '@/components/ui/skeleto
 import { FadeIn } from '@/components/ui/AnimatedList'
 import { WelcomeHeader } from '@/components/shared'
 import { motion } from 'framer-motion'
-import { Plus, Search, Building2, Star, CheckCircle, Eye, LayoutGrid, List, ChevronLeft, ChevronRight, Mail, Phone, TrendingUp, Clock, X, Users, Download, RefreshCw, Grid3X3, Zap } from 'lucide-react'
+import { Plus, Search, Building2, Star, CheckCircle, Eye, LayoutGrid, List, ChevronLeft, ChevronRight, Mail, Phone, TrendingUp, Clock, X, Users, Download, RefreshCw, Grid3X3, Zap, FileText } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
 
@@ -96,90 +96,98 @@ export default function VendorsPage() {
 
     return (
         <PageLayout
-            title="Vendors"
-            actions={
-                <Button variant="primary" onClick={() => setShowModal(true)} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/25 btn-shine">
-                    <Plus size={18} /> Add Vendor
-                </Button>
-            }
             rightSidebar={
-                <div className="p-4 space-y-3">
-                    <div className="p-4 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 rounded-xl border border-slate-200/60">
-                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Actions</h3>
-                        <div className="space-y-1.5">
-                            <button onClick={() => setShowModal(true)} className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all duration-200 border border-transparent">
-                                <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
-                                    <Plus size={14} className="text-emerald-500" />
+                <div className="p-4 space-y-4">
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                        <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Actions</h3>
+                        </div>
+                        <div className="p-3 space-y-2">
+                            <button onClick={() => setShowModal(true)} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 text-emerald-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-emerald-200">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                                    <Plus size={14} className="text-white" />
                                 </div>
-                                <span className="text-sm font-medium">Add Vendor</span>
+                                <span className="text-sm font-semibold">Add Vendor</span>
                             </button>
-                            <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                                <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                                    <RefreshCw size={14} className="text-slate-500" />
+                            <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-50 to-violet-100/50 text-violet-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-violet-200">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-sm">
+                                    <Star size={14} className="text-white" />
                                 </div>
-                                <span className="text-sm font-medium">Refresh</span>
+                                <span className="text-sm font-semibold">Top Rated</span>
                             </button>
-                            <button className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-all duration-200 border border-transparent">
-                                <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                                    <Download size={14} className="text-slate-500" />
+                            <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-amber-100/50 text-amber-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-amber-200">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-sm">
+                                    <FileText size={14} className="text-white" />
                                 </div>
-                                <span className="text-sm font-medium">Export</span>
+                                <span className="text-sm font-semibold">Performance Report</span>
                             </button>
                         </div>
                     </div>
 
-                    <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">View Mode</h3>
-                        <div className="flex gap-2">
-                            <button onClick={() => setViewMode('list')} className={cn('flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200', viewMode === 'list' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent')}>
-                                <List size={14} /> List
-                            </button>
-                            <button onClick={() => setViewMode('grid')} className={cn('flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200', viewMode === 'grid' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'text-slate-500 hover:bg-slate-50 border border-transparent')}>
-                                <Grid3X3 size={14} /> Grid
-                            </button>
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                        <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">View Mode</h3>
                         </div>
-                    </div>
-
-                    <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Vendor Stats</h3>
-                        <div className="grid grid-cols-3 gap-2">
-                            <div className="p-3 bg-emerald-50 rounded-lg text-center">
-                                <p className="text-lg font-bold text-emerald-600">{activeCount}</p>
-                                <p className="text-xs text-emerald-600">Active</p>
-                            </div>
-                            <div className="p-3 bg-slate-50 rounded-lg text-center">
-                                <p className="text-lg font-bold text-slate-400">{totalCount - activeCount}</p>
-                                <p className="text-xs text-slate-400">Inactive</p>
-                            </div>
-                            <div className="p-3 bg-amber-50 rounded-lg text-center">
-                                <p className="text-lg font-bold text-amber-600">{totalCount}</p>
-                                <p className="text-xs text-amber-600">Total</p>
+                        <div className="p-3">
+                            <div className="flex gap-2">
+                                <button onClick={() => setViewMode('list')} className={cn('flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200', viewMode === 'list' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20' : 'text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300')}>
+                                    <List size={14} /> List
+                                </button>
+                                <button onClick={() => setViewMode('grid')} className={cn('flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200', viewMode === 'grid' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20' : 'text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300')}>
+                                    <Grid3X3 size={14} /> Grid
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Categories</h3>
-                        <div className="space-y-2">
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                        <div className="p-3 bg-gradient-to-r from-emerald-500/5 to-emerald-100/50 border-b border-slate-100/50">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vendor Stats</h3>
+                        </div>
+                        <div className="p-3">
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="p-3 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl text-center border border-emerald-100/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
+                                    <p className="text-lg font-bold text-emerald-600">{activeCount}</p>
+                                    <p className="text-xs text-emerald-500 font-medium">Active</p>
+                                </div>
+                                <div className="p-3 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl text-center border border-slate-100/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
+                                    <p className="text-lg font-bold text-slate-400">{totalCount - activeCount}</p>
+                                    <p className="text-xs text-slate-400 font-medium">Inactive</p>
+                                </div>
+                                <div className="p-3 bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl text-center border border-amber-100/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
+                                    <p className="text-lg font-bold text-amber-600">{totalCount}</p>
+                                    <p className="text-xs text-amber-500 font-medium">Total</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                        <div className="p-3 bg-gradient-to-r from-violet-500/5 to-purple-500/5 border-b border-slate-100/50">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Categories</h3>
+                        </div>
+                        <div className="p-3 space-y-2">
                             {['IT Equipment', 'Office Supplies', 'Raw Materials', 'Services'].map((cat) => (
-                                <div key={cat} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
-                                    <span className="text-sm text-slate-500">{cat}</span>
-                                    <span className="text-xs font-medium text-slate-600 px-2 py-0.5 bg-white rounded border border-slate-200">{Math.floor(Math.random() * 10) + 1}</span>
+                                <div key={cat} className="flex items-center justify-between p-2.5 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-xl border border-slate-100/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
+                                    <span className="text-sm font-medium text-slate-600">{cat}</span>
+                                    <span className="text-xs font-bold text-slate-500 px-2.5 py-1 bg-white rounded-lg border border-slate-200 shadow-sm">{Math.floor(Math.random() * 10) + 1}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    <div className="p-4 bg-white rounded-xl border border-slate-100/60 shadow-sm">
-                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Recent Activity</h3>
-                        <div className="space-y-2">
-                            <div className="p-2.5 bg-slate-50 rounded-lg">
-                                <p className="text-sm text-slate-600">New vendor added</p>
-                                <p className="text-xs text-slate-400">Tech Solutions Inc - 2 hours ago</p>
+                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                        <div className="p-3 bg-gradient-to-r from-cyan-500/5 to-cyan-100/50 border-b border-slate-100/50">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recent Activity</h3>
+                        </div>
+                        <div className="p-3 space-y-2">
+                            <div className="p-2.5 bg-gradient-to-r from-emerald-50 to-emerald-100/50 rounded-xl border border-emerald-100/50">
+                                <p className="text-sm font-medium text-slate-600">New vendor added</p>
+                                <p className="text-xs text-slate-400 mt-0.5">Tech Solutions Inc - 2 hours ago</p>
                             </div>
-                            <div className="p-2.5 bg-slate-50 rounded-lg">
-                                <p className="text-sm text-slate-600">Vendor approved</p>
-                                <p className="text-xs text-slate-400">Global Supplies Ltd - 1 day ago</p>
+                            <div className="p-2.5 bg-gradient-to-r from-violet-50 to-violet-100/50 rounded-xl border border-violet-100/50">
+                                <p className="text-sm font-medium text-slate-600">Vendor approved</p>
+                                <p className="text-xs text-slate-400 mt-0.5">Global Supplies Ltd - 1 day ago</p>
                             </div>
                         </div>
                     </div>

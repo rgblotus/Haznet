@@ -55,10 +55,10 @@ export default function OrderDetailPage() {
         <PageLayout 
             title={`Order ${order.order_no}`}
             actions={
-                <div className="flex gap-3">
-                    <Button variant="secondary" size="sm" className="bg-white/80 backdrop-blur-sm border border-slate-200/50">
-                        <Printer size={16} /> Print
-                    </Button>
+                <div className="flex items-center gap-3">
+                    <Link to="/orders" className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all">
+                        <ArrowLeft size={14} /> Back
+                    </Link>
                 </div>
             }
         >
@@ -179,50 +179,100 @@ export default function OrderDetailPage() {
                     </FadeIn>
                 </div>
 
-                <div className="space-y-6">
-                    <FadeIn delay={0.15}>
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-100/50 shadow-lg shadow-slate-200/10">
-                            <h2 className="text-sm font-bold text-slate-700 mb-5 flex items-center gap-2">
-                                <Clock size={16} className="text-rose-500" />
-                                Order Timeline
-                            </h2>
-                            <div className="flex flex-col gap-0">
-                                {statusFlow.map((status, i) => {
-                                    const isCompleted = i <= currentStatusIndex
-                                    const isCurrent = i === currentStatusIndex
-                                    const Icon = status.icon
-                                    return (
-                                        <div key={status.key} className="flex items-start gap-3 relative">
-                                            {i < statusFlow.length - 1 && (
-                                                <div className={`absolute left-4 top-8 -bottom-3 w-0.5 ${isCompleted ? 'bg-rose-500' : 'bg-slate-200'}`} />
-                                            )}
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${isCurrent ? 'ring-2 ring-rose-400' : ''} ${isCompleted ? 'bg-rose-500' : 'bg-slate-100'}`}>
-                                                <Icon size={14} className={isCompleted ? 'text-white' : 'text-slate-400'} />
-                                            </div>
-                                            <div className="flex-1 pb-5">
-                                                <p className={`text-sm ${isCompleted ? 'text-slate-700 font-semibold' : 'text-slate-400'} ${isCurrent ? 'font-bold' : ''}`}>{status.label}</p>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
+                <div className="space-y-4">
+                    {/* Quick Actions */}
+                    <FadeIn>
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                            <div className="p-3 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-100/50">
+                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</h2>
+                            </div>
+                            <div className="p-3 space-y-2">
+                                <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-rose-50 to-rose-100/50 text-rose-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-rose-200 w-full">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-sm">
+                                        <Truck size={14} className="text-white" />
+                                    </div>
+                                    <span className="text-sm font-semibold">Mark Shipped</span>
+                                </button>
+                                <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-50 to-cyan-100/50 text-cyan-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-cyan-200 w-full">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-sm">
+                                        <ClipboardList size={14} className="text-white" />
+                                    </div>
+                                    <span className="text-sm font-semibold">View Delivery</span>
+                                </button>
                             </div>
                         </div>
                     </FadeIn>
 
+                    {/* Progress */}
+                    <FadeIn delay={0.1}>
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                            <div className="p-3 bg-gradient-to-r from-rose-500/5 to-rose-100/50 border-b border-slate-100/50">
+                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Progress</h2>
+                            </div>
+                            <div className="p-3">
+                                <div className="flex flex-col gap-0">
+                                    {statusFlow.map((status, i) => {
+                                        const isCompleted = i <= currentStatusIndex
+                                        const isCurrent = i === currentStatusIndex
+                                        const Icon = status.icon
+                                        return (
+                                            <div key={status.key} className="flex items-start gap-3 relative">
+                                                {i < statusFlow.length - 1 && (
+                                                    <div className={`absolute left-4 top-8 -bottom-3 w-0.5 ${isCompleted ? 'bg-rose-500' : 'bg-slate-200'}`} />
+                                                )}
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${isCurrent ? 'ring-2 ring-rose-400' : ''} ${isCompleted ? 'bg-rose-500' : 'bg-slate-100'}`}>
+                                                    <Icon size={14} className={isCompleted ? 'text-white' : 'text-slate-400'} />
+                                                </div>
+                                                <div className="flex-1 pb-5">
+                                                    <p className={`text-sm ${isCompleted ? 'text-slate-700 font-semibold' : 'text-slate-400'} ${isCurrent ? 'font-bold' : ''}`}>{status.label}</p>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+
+                    {/* Order Quick Stats */}
+                    <FadeIn delay={0.15}>
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                            <div className="p-3 bg-gradient-to-r from-amber-500/5 to-amber-100/50 border-b border-slate-100/50">
+                                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Order</h2>
+                            </div>
+                            <div className="p-3 space-y-1.5">
+                                <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">Quantity</span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">{order.quantity}</span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">Amount</span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600">${order.total_amount?.toLocaleString() || '0'}</span>
+                                </div>
+                                <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/50">
+                                    <span className="text-xs text-slate-400">Received</span>
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600">{order.received_quantity || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </FadeIn>
+
+                    {/* Vendor */}
                     {order.vendor && (
                         <FadeIn delay={0.2}>
-                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-100/50 shadow-lg shadow-slate-200/10">
-                                <h2 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                    <Truck size={16} className="text-emerald-500" />
-                                    Vendor Info
-                                </h2>
-                                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl">
-                                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                                        <Truck size={20} className="text-white" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-700">{order.vendor.name}</p>
-                                        <p className="text-xs text-slate-400">{order.vendor.email || 'No email'}</p>
+                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                                <div className="p-3 bg-gradient-to-r from-emerald-500/5 to-emerald-100/50 border-b border-slate-100/50">
+                                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vendor</h2>
+                                </div>
+                                <div className="p-3">
+                                    <div className="flex items-center gap-3 p-2 rounded-lg bg-emerald-50/50">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                                            <Truck size={14} className="text-emerald-600" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-bold text-slate-700 truncate">{order.vendor.name}</p>
+                                            <p className="text-[10px] text-slate-400 truncate">{order.vendor.email || 'No email'}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

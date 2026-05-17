@@ -12,23 +12,43 @@ router = APIRouter()
 
 PROCESSING_STATUSES = [
     RequisitionStatus.PROCESSING,
-    RequisitionStatus.TENDER_AWAITING,
+    RequisitionStatus.TENDER_CREATED,
+    RequisitionStatus.TENDER_AWARDED,
     RequisitionStatus.INVENTORY_CHECKED,
+    RequisitionStatus.ORDER_CREATED,
+    RequisitionStatus.SHIPPED,
+    RequisitionStatus.RECEIVING,
+    RequisitionStatus.INSPECTION_PENDING,
 ]
 PENDING_APPROVAL_STATUSES = [
     RequisitionStatus.SUBMITTED,
     RequisitionStatus.UNDER_REVIEW,
+    RequisitionStatus.RETURNED,
 ]
 
 
 def _is_admin_or_proc(user: User) -> bool:
-    return user.role in (UserRole.ADMIN, UserRole.PROCUREMENT_OFFICER)
+    return user.role in (UserRole.ADMIN, UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
 
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     is_privileged = _is_admin_or_proc(current_user)
-    dept_filter = () if is_privileged else (Requisition.department_id == current_user.department_id,)
+    
+    if is_privileged:
+        dept_filter = None
+    elif current_user.role == UserRole.INDENTOR:
+        dept_filter = Requisition.creator_id == current_user.id
+    elif current_user.role == UserRole.HOD:
+        dept_filter = Requisition.department_id == current_user.department_id
+    elif current_user.role == UserRole.INVENTORY_MANAGER:
+        dept_filter = or_(
+            Requisition.status == RequisitionStatus.PENDING_INVENTORY,
+            Requisition.status == RequisitionStatus.INVENTORY_CHECKED,
+            Requisition.current_owner_id == current_user.id,
+        )
+    else:
+        dept_filter = None
 
     req_base = select(
         func.count(Requisition.id).label("total"),
@@ -38,21 +58,21 @@ async def get_stats(current_user: User = Depends(get_current_user), db: AsyncSes
         func.sum(case((and_(Requisition.current_owner_id == current_user.id, Requisition.status.in_(PROCESSING_STATUSES)), 1), else_=0)).label("my_pending"),
         func.sum(case((Requisition.creator_id == current_user.id, 1), else_=0)).label("my_created"),
     )
-    if dept_filter:
-        req_base = req_base.where(and_(*dept_filter))
+    if dept_filter is not None:
+        req_base = req_base.where(dept_filter)
     req_result = await db.execute(req_base)
     req_row = req_result.one()
 
     tender_result = await db.execute(
         select(func.count(Tender.id)).where(
-            Tender.status.in_([TenderStatus.BIDDING, TenderStatus.EVALUATING])
+            Tender.status.in_([TenderStatus.BIDDING, TenderStatus.EVALUATING, TenderStatus.PUBLISHED])
         )
     )
     active_tenders = tender_result.scalar() or 0
 
     order_result = await db.execute(
         select(func.count(Order.id)).where(
-            Order.status.in_([OrderStatus.DRAFT, OrderStatus.APPROVED])
+            Order.status.in_([OrderStatus.DRAFT, OrderStatus.APPROVED, OrderStatus.ISSUED])
         )
     )
     pending_orders = order_result.scalar() or 0
@@ -113,8 +133,8 @@ async def get_activity(
                 Requisition.current_owner_id == current_user.id,
             )
         )
-    elif current_user.role == UserRole.OIC:
-        base_filter.append(Requisition.current_owner_id == current_user.id)
+    elif current_user.role in (UserRole.OIC, UserRole.ADMIN, UserRole.PROCUREMENT_OFFICER):
+        pass
 
     count_query = select(func.count(Requisition.id))
     if base_filter:
@@ -152,12 +172,19 @@ async def get_activity(
 
 @router.get("/summary")
 async def get_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    recent_reqs = await db.execute(
-        select(Requisition)
-        .where(Requisition.creator_id == current_user.id)
-        .order_by(Requisition.created_at.desc())
-        .limit(5)
-    )
+    if current_user.role == UserRole.INDENTOR:
+        recent_reqs = await db.execute(
+            select(Requisition)
+            .where(Requisition.creator_id == current_user.id)
+            .order_by(Requisition.created_at.desc())
+            .limit(5)
+        )
+    else:
+        recent_reqs = await db.execute(
+            select(Requisition)
+            .order_by(Requisition.created_at.desc())
+            .limit(5)
+        )
     my_requisitions = recent_reqs.scalars().all()
 
     assigned_reqs = await db.execute(
