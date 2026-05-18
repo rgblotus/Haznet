@@ -154,6 +154,8 @@ export const api = {
       request<Requisition>(`/requisitions/${id}/process`, { method: 'POST' }),
     complete: (id: string) =>
       request<Requisition>(`/requisitions/${id}/complete`, { method: 'POST' }),
+    getActivity: (id: string) =>
+      request<any[]>(`/requisitions/${id}/activity`),
   },
 
   documents: {

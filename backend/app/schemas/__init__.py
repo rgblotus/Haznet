@@ -477,3 +477,17 @@ class ActivityItem(BaseModel):
     title: str
     status: str
     updated_at: str
+
+
+class ActivityLogOut(BaseModel):
+    id: UUID
+    requisition_id: UUID
+    user_id: UUID
+    action: str
+    details: Optional[str] = None
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    created_at: datetime
+    user_name: Optional[str] = None
+
+    model_config = {"from_attributes": True}

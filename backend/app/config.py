@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     postgres_user: str = "postgres"
     postgres_password: str = "postgres"
     postgres_host: str = "localhost"
-    postgres_port: int = 5432
+    postgres_port: int = 9876
     postgres_db: str = "neodb"
     postgres_pool_size: int = 20
     postgres_max_overflow: int = 10

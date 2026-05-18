@@ -251,3 +251,19 @@ class Message(Base):
     sender = relationship("User", back_populates="sent_messages", foreign_keys=[sender_id])
     receiver = relationship("User", back_populates="received_messages", foreign_keys=[receiver_id])
     requisition = relationship("Requisition", back_populates="messages")
+
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requisition_id = Column(UUID(as_uuid=True), ForeignKey("requisitions.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    action = Column(String(100), nullable=False)
+    details = Column(Text, nullable=True)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    requisition = relationship("Requisition", foreign_keys=[requisition_id])
+    user = relationship("User", foreign_keys=[user_id])

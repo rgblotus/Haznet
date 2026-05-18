@@ -9,10 +9,24 @@ from app.middleware.auth import get_current_user, require_role
 from app.models import User, Requisition, Department, UserRole, RequisitionStatus
 from app.schemas import (
     RequisitionCreate, RequisitionUpdate, RequisitionOut, WorkflowAction,
-    PaginatedResponse, create_pagination_meta,
+    PaginatedResponse, create_pagination_meta, ActivityLogOut,
 )
+from app.models import ActivityLog
 
 router = APIRouter()
+
+
+async def _log_activity(db: AsyncSession, requisition_id: UUID, user_id: UUID, action: str, details: str = None, old_value: str = None, new_value: str = None):
+    log = ActivityLog(
+        requisition_id=requisition_id,
+        user_id=user_id,
+        action=action,
+        details=details,
+        old_value=old_value,
+        new_value=new_value,
+    )
+    db.add(log)
+    await db.flush()
 
 
 async def _gen_requisition_no(db: AsyncSession):
@@ -190,6 +204,9 @@ async def create_req(
     db.add(req)
     await db.commit()
     await db.refresh(req)
+
+    await _log_activity(db, req.id, current_user.id, "created", f"Requisition {req_no} created with title: {title}")
+
     return req
 
 
@@ -256,6 +273,8 @@ async def submit_req(
     req.return_reason = None
     req.returned_to_indentor = False
 
+    await _log_activity(db, req_id, current_user.id, "submitted", "Requisition submitted for review")
+
     cnphod_result = await db.execute(
         select(User).where(User.role == UserRole.CNP_HOD, User.is_active == True)
     )
@@ -287,6 +306,8 @@ async def review_req(
     if body.reason:
         req.return_reason = body.reason
 
+    await _log_activity(db, req_id, current_user.id, "reviewed", "Requisition reviewed and approved")
+
     await db.commit()
     await db.refresh(req)
     return req
@@ -308,6 +329,7 @@ async def return_req(
         raise HTTPException(404, "Requisition not found")
 
     reason = body.reason or "Returned for clarification"
+    await _log_activity(db, req_id, current_user.id, "returned", reason, old_value=req.status.value, new_value="returned")
     req.status = RequisitionStatus.RETURNED
     req.return_reason = reason
     req.returned_to_indentor = True
@@ -346,6 +368,8 @@ async def assign_to_procurement(
     req.assigned_to_procurement = True
     req.hodi_cnp_approval = "Approved"
 
+    await _log_activity(db, req_id, current_user.id, "assigned", "Requisition assigned to procurement")
+
     await db.commit()
     await db.refresh(req)
     return req
@@ -364,6 +388,7 @@ async def process_req(
     if req.status not in (RequisitionStatus.PROCESSING, RequisitionStatus.UNDER_REVIEW):
         raise HTTPException(400, "Requisition is not ready for processing")
 
+    await _log_activity(db, req_id, current_user.id, "processing", "Requisition moved to processing")
     req.status = RequisitionStatus.PROCESSING
     req.current_owner_id = current_user.id
 
@@ -412,7 +437,45 @@ async def complete_req(
     if req.status not in (RequisitionStatus.ORDER_CREATED, RequisitionStatus.RECEIVING, RequisitionStatus.INSPECTION_PENDING):
         raise HTTPException(400, "Requisition is not ready for completion")
 
+    await _log_activity(db, req_id, current_user.id, "completed", f"Requisition marked as completed")
     req.status = RequisitionStatus.COMPLETED
     await db.commit()
     await db.refresh(req)
     return req
+
+
+@router.get("/{req_id}/activity", response_model=list[ActivityLogOut])
+async def get_activity_logs(
+    req_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Requisition not found")
+
+    query = (
+        select(ActivityLog, User.first_name, User.last_name)
+        .join(User, ActivityLog.user_id == User.id)
+        .where(ActivityLog.requisition_id == req_id)
+        .order_by(ActivityLog.created_at.desc())
+        .limit(50)
+    )
+    res = await db.execute(query)
+    rows = res.all()
+
+    return [
+        ActivityLogOut(
+            id=log.id,
+            requisition_id=log.requisition_id,
+            user_id=log.user_id,
+            action=log.action,
+            details=log.details,
+            old_value=log.old_value,
+            new_value=log.new_value,
+            created_at=log.created_at,
+            user_name=f"{first_name} {last_name}" if first_name and last_name else None,
+        )
+        for log, first_name, last_name in rows
+    ]

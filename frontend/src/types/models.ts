@@ -243,3 +243,15 @@ export interface ActivityItem {
   status: string
   updated_at: string
 }
+
+export interface ActivityLog {
+  id: string
+  requisition_id: string
+  user_id: string
+  action: string
+  details: string | null
+  old_value: string | null
+  new_value: string | null
+  created_at: string
+  user_name: string | null
+}
