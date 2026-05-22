@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, cast, Integer, or_, and_
+from sqlalchemy import select, func, cast, Integer, or_
 from uuid import UUID
 from datetime import datetime, timezone
 
@@ -8,81 +8,30 @@ from app.database import get_db
 from app.middleware.auth import get_current_user, require_role
 from app.models import User, Requisition, Department, UserRole, RequisitionStatus
 from app.schemas import (
-    RequisitionCreate, RequisitionUpdate, RequisitionOut, WorkflowAction,
-    PaginatedResponse, create_pagination_meta, ActivityLogOut,
+    RequisitionCreate,
+    RequisitionUpdate,
+    RequisitionOut,
+    WorkflowAction,
+    PaginatedResponse,
+    create_pagination_meta,
+    ActivityLogOut,
 )
 from app.models import ActivityLog
+from app.services.requisition import RequisitionService, RequisitionError
 
 router = APIRouter()
 
 
-async def _log_activity(db: AsyncSession, requisition_id: UUID, user_id: UUID, action: str, details: str = None, old_value: str = None, new_value: str = None):
+async def _log_activity(
+    db: AsyncSession, requisition_id: UUID, user_id: UUID, action: str, details: str
+):
     log = ActivityLog(
         requisition_id=requisition_id,
         user_id=user_id,
         action=action,
         details=details,
-        old_value=old_value,
-        new_value=new_value,
     )
     db.add(log)
-    await db.flush()
-
-
-async def _gen_requisition_no(db: AsyncSession):
-    result = await db.execute(
-        select(func.max(cast(func.substring(Requisition.requisition_no, 5), Integer)))
-    )
-    num = result.scalar() or 0
-    return f"REQ-{num + 1:05d}"
-
-
-async def _gen_file_reference(db: AsyncSession, financial_year: str, sap_req_no: str) -> str:
-    year_part = financial_year.replace("FY ", "") if financial_year.startswith("FY ") else financial_year
-    result = await db.execute(
-        select(func.max(cast(func.substring(Requisition.file_reference, -4), Integer)))
-        .where(Requisition.file_reference.isnot(None))
-    )
-    num = result.scalar() or 0
-    sequence = num + 1
-    if sequence > 1000:
-        sequence = 1
-    return f"GAIL/HZR/CNP/{year_part}/{sap_req_no}/{sequence:04d}"
-
-
-async def _gen_file_reference(db: AsyncSession, financial_year: str, sap_req_no: str) -> str:
-    year_part = financial_year.replace("FY ", "") if financial_year.startswith("FY ") else financial_year
-    result = await db.execute(
-        select(func.max(cast(func.substring(Requisition.file_reference, -4), Integer)))
-        .where(Requisition.file_reference.isnot(None))
-    )
-    num = result.scalar() or 0
-    sequence = num + 1
-    if sequence > 1000:
-        sequence = 1
-    return f"GAIL/HZR/CNP/{year_part}/{sap_req_no}/{sequence:04d}"
-
-
-def _can_edit_req(user: User, req: Requisition) -> bool:
-    if user.role == UserRole.ADMIN:
-        return True
-    if user.role == UserRole.INDENTOR and req.creator_id == user.id:
-        return req.status in (RequisitionStatus.DRAFT, RequisitionStatus.RETURNED)
-    if user.role in (UserRole.CNP_HOD, UserRole.PROCUREMENT_OFFICER, UserRole.OIC):
-        return req.status not in (RequisitionStatus.COMPLETED, RequisitionStatus.CANCELLED)
-    return False
-
-
-def _can_view_req(user: User, req: Requisition) -> bool:
-    if user.role in (UserRole.ADMIN, UserRole.OIC):
-        return True
-    if user.role == UserRole.INDENTOR:
-        return req.creator_id == user.id
-    if user.role == UserRole.HOD:
-        return req.department_id == user.department_id
-    if user.role in (UserRole.CNP_HOD, UserRole.PROCUREMENT_OFFICER, UserRole.INVENTORY_MANAGER):
-        return True
-    return False
 
 
 @router.get("", response_model=PaginatedResponse[RequisitionOut])
@@ -96,49 +45,17 @@ async def list_reqs(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Requisition)
-    count_query = select(func.count(Requisition.id))
+    """List requisitions with optional filtering and pagination.
 
-    if status_filter:
-        query = query.where(Requisition.status == RequisitionStatus(status_filter))
-        count_query = count_query.where(Requisition.status == RequisitionStatus(status_filter))
-
-    if priority:
-        query = query.where(Requisition.priority == priority)
-        count_query = count_query.where(Requisition.priority == priority)
-
-    if search:
-        search_filter = or_(
-            Requisition.title.ilike(f"%{search}%"),
-            Requisition.requisition_no.ilike(f"%{search}%"),
-            Requisition.description.ilike(f"%{search}%"),
-        )
-        query = query.where(search_filter)
-        count_query = count_query.where(search_filter)
-
-    if department_id:
-        query = query.where(Requisition.department_id == UUID(department_id))
-        count_query = count_query.where(Requisition.department_id == UUID(department_id))
-
-    if current_user.role == UserRole.INDENTOR:
-        query = query.where(Requisition.creator_id == current_user.id)
-        count_query = count_query.where(Requisition.creator_id == current_user.id)
-    elif current_user.role == UserRole.HOD:
-        query = query.where(Requisition.department_id == current_user.department_id)
-        count_query = count_query.where(Requisition.department_id == current_user.department_id)
-
-    total_result = await db.execute(count_query)
-    total = total_result.scalar() or 0
-
-    query = query.order_by(Requisition.created_at.desc())
-    query = query.offset((page - 1) * page_size).limit(page_size)
-    
-    result = await db.execute(query)
-    requisitions = result.scalars().all()
-
+    Returns paginated requisitions filtered by status, priority, search, or department.
+    """
+    service = RequisitionService(db)
+    rows, meta = await service.list(
+        current_user, page, page_size, status_filter, priority, search, department_id
+    )
     return PaginatedResponse(
-        data=[RequisitionOut.model_validate(r) for r in requisitions],
-        meta=create_pagination_meta(total, page, page_size),
+        data=[RequisitionOut.model_validate(r) for r in rows],
+        meta=meta,
     )
 
 
@@ -148,11 +65,15 @@ async def get_req(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Get a single requisition by ID.
+
+    Returns the requisition details.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
-    if not _can_view_req(current_user, req):
+    if not service.can_view(current_user, req):
         raise HTTPException(403, "You do not have permission to view this requisition")
     return req
 
@@ -163,63 +84,18 @@ async def create_req(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    req_no = await _gen_requisition_no(db)
+    """Create a new requisition.
 
-    dept_id = current_user.department_id
-    if not dept_id:
-        result = await db.execute(select(Department).where(Department.name == "Contract & Procurement"))
-        dep = result.scalar_one_or_none()
-        if dep:
-            dept_id = dep.id
+    Returns the created requisition with generated number.
+    """
+    service = RequisitionService(db)
+    try:
+        req = await service.create(body, current_user)
+    except RequisitionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
-    integrity_pact = (body.cost_estimate or 0) > 10000000
-
-    file_reference = None
-    if body.financial_year and body.sap_requisition_number:
-        file_reference = await _gen_file_reference(db, body.financial_year, body.sap_requisition_number)
-
-    requisition_create_date = body.requisition_create_date or datetime.now(timezone.utc)
-
-    title = body.title or (body.job_description[:50] if body.job_description else f"REQ-{body.sap_requisition_number or 'NEW'}")
-    description = body.description or body.job_description or ""
-    total_estimate = body.total_estimate or body.cost_estimate
-
-    req = Requisition(
-        requisition_no=req_no,
-        title=title,
-        description=description,
-        category=body.category,
-        priority=body.priority,
-        quantity=body.quantity,
-        unit_price_estimate=body.unit_price_estimate,
-        total_estimate=total_estimate,
-        currency=body.currency,
-        required_by_date=body.required_by_date,
-        justification=body.justification,
-        specifications=body.specifications,
-        creator_id=current_user.id,
-        department_id=dept_id,
-        current_owner_id=current_user.id,
-        status=RequisitionStatus.DRAFT,
-        financial_year=body.financial_year,
-        sap_requisition_number=body.sap_requisition_number,
-        requisition_create_date=requisition_create_date,
-        requisition_hod_release_date=body.requisition_hod_release_date,
-        job_description=body.job_description,
-        cost_estimate=body.cost_estimate,
-        startup_applicable=body.startup_applicable,
-        industry=body.industry,
-        sector=body.sector,
-        contract_period_months=body.contract_period_months,
-        integrity_pact=integrity_pact,
-        file_reference=file_reference,
-    )
-    db.add(req)
     await db.commit()
     await db.refresh(req)
-
-    await _log_activity(db, req.id, current_user.id, "created", f"Requisition {req_no} created with title: {title}")
-
     return req
 
 
@@ -230,16 +106,20 @@ async def update_req(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Update an existing requisition.
+
+    Returns the updated requisition.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
 
-    if not _can_edit_req(current_user, req):
-        raise HTTPException(403, "You do not have permission to edit this requisition")
+    try:
+        req = await service.update(req, body, current_user)
+    except RequisitionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
-    for k, v in body.model_dump(exclude_unset=True).items():
-        setattr(req, k, v)
     await db.commit()
     await db.refresh(req)
     return req
@@ -251,15 +131,20 @@ async def delete_req(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Delete a requisition.
+
+    Returns a success confirmation message.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
 
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(403, "Only administrators can delete requisitions")
+    try:
+        await service.delete(req, current_user)
+    except RequisitionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
-    await db.delete(req)
     await db.commit()
     return {"message": "Requisition deleted successfully"}
 
@@ -270,30 +155,19 @@ async def submit_req(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Requisition).where(
-            Requisition.id == req_id,
-            Requisition.creator_id == current_user.id
-        )
-    )
-    req = result.scalar_one_or_none()
-    if not req:
+    """Submit a requisition for review.
+
+    Returns the requisition with updated status.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
+    if not req or req.creator_id != current_user.id:
         raise HTTPException(404, "Requisition not found")
-    if req.status not in (RequisitionStatus.DRAFT, RequisitionStatus.RETURNED):
-        raise HTTPException(400, "Can only submit draft or returned requisitions")
 
-    req.status = RequisitionStatus.SUBMITTED
-    req.return_reason = None
-    req.returned_to_indentor = False
-
-    await _log_activity(db, req_id, current_user.id, "submitted", "Requisition submitted for review")
-
-    cnphod_result = await db.execute(
-        select(User).where(User.role == UserRole.CNP_HOD, User.is_active == True)
-    )
-    cnphod = cnphod_result.scalars().first()
-    if cnphod:
-        req.current_owner_id = cnphod.id
+    try:
+        req = await service.submit(req, current_user)
+    except RequisitionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
     await db.commit()
     await db.refresh(req)
@@ -307,19 +181,19 @@ async def review_req(
     current_user: User = Depends(require_role(UserRole.CNP_HOD, UserRole.OIC)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Review and approve a submitted requisition.
+
+    Returns the requisition with updated status.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
-    if req.status not in (RequisitionStatus.SUBMITTED, RequisitionStatus.UNDER_REVIEW):
-        raise HTTPException(400, "Requisition is not pending review")
 
-    req.status = RequisitionStatus.UNDER_REVIEW
-    req.hodi_cnp_approval = "Approved"
-    if body.reason:
-        req.return_reason = body.reason
-
-    await _log_activity(db, req_id, current_user.id, "reviewed", "Requisition reviewed and approved")
+    try:
+        req = await service.review(req, current_user, body.reason)
+    except RequisitionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
     await db.commit()
     await db.refresh(req)
@@ -333,20 +207,26 @@ async def return_req(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role not in (UserRole.CNP_HOD, UserRole.PROCUREMENT_OFFICER, UserRole.OIC):
-        raise HTTPException(403, "You do not have permission to return this requisition")
+    """Return a requisition to the indentor for clarification.
 
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    Returns the requisition with returned status and reason.
+    """
+    if current_user.role not in (
+        UserRole.CNP_HOD,
+        UserRole.PROCUREMENT_OFFICER,
+        UserRole.OIC,
+    ):
+        raise HTTPException(
+            403, "You do not have permission to return this requisition"
+        )
+
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
 
     reason = body.reason or "Returned for clarification"
-    await _log_activity(db, req_id, current_user.id, "returned", reason, old_value=req.status.value, new_value="returned")
-    req.status = RequisitionStatus.RETURNED
-    req.return_reason = reason
-    req.returned_to_indentor = True
-    req.current_owner_id = req.creator_id
+    req = await service.return_req(req, current_user, reason)
 
     await db.commit()
     await db.refresh(req)
@@ -360,28 +240,19 @@ async def assign_to_procurement(
     current_user: User = Depends(require_role(UserRole.CNP_HOD, UserRole.OIC)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Assign a requisition to a procurement officer.
+
+    Returns the requisition with the assigned owner.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
-    if req.status not in (RequisitionStatus.SUBMITTED, RequisitionStatus.UNDER_REVIEW):
-        raise HTTPException(400, "Requisition must be under review before assigning")
 
-    if body.assign_to:
-        req.current_owner_id = body.assign_to
-    else:
-        po_result = await db.execute(
-            select(User).where(User.role == UserRole.PROCUREMENT_OFFICER, User.is_active == True)
-        )
-        po = po_result.scalars().first()
-        if po:
-            req.current_owner_id = po.id
-
-    req.status = RequisitionStatus.PROCESSING
-    req.assigned_to_procurement = True
-    req.hodi_cnp_approval = "Approved"
-
-    await _log_activity(db, req_id, current_user.id, "assigned", "Requisition assigned to procurement")
+    try:
+        req = await service.assign_to_procurement(req, current_user, body.assign_to)
+    except RequisitionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
     await db.commit()
     await db.refresh(req)
@@ -391,19 +262,24 @@ async def assign_to_procurement(
 @router.post("/{req_id}/process", response_model=RequisitionOut)
 async def process_req(
     req_id: UUID,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Process a requisition in the procurement workflow.
+
+    Returns the requisition with updated processing status.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
-    if req.status not in (RequisitionStatus.PROCESSING, RequisitionStatus.UNDER_REVIEW):
-        raise HTTPException(400, "Requisition is not ready for processing")
 
-    await _log_activity(db, req_id, current_user.id, "processing", "Requisition moved to processing")
-    req.status = RequisitionStatus.PROCESSING
-    req.current_owner_id = current_user.id
+    try:
+        req = await service.process(req, current_user)
+    except RequisitionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
     await db.commit()
     await db.refresh(req)
@@ -417,8 +293,12 @@ async def cancel_req(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Cancel a requisition.
+
+    Returns the requisition with cancelled status.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
 
@@ -440,18 +320,27 @@ async def cancel_req(
 @router.post("/{req_id}/complete", response_model=RequisitionOut)
 async def complete_req(
     req_id: UUID,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC, UserRole.ADMIN)),
+    current_user: User = Depends(
+        require_role(
+            UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC, UserRole.ADMIN
+        )
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Mark a requisition as completed.
+
+    Returns the requisition with completed status.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
-    if req.status not in (RequisitionStatus.ORDER_CREATED, RequisitionStatus.RECEIVING, RequisitionStatus.INSPECTION_PENDING):
-        raise HTTPException(400, "Requisition is not ready for completion")
 
-    await _log_activity(db, req_id, current_user.id, "completed", f"Requisition marked as completed")
-    req.status = RequisitionStatus.COMPLETED
+    try:
+        req = await service.complete(req, current_user)
+    except RequisitionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
     await db.commit()
     await db.refresh(req)
     return req
@@ -463,32 +352,17 @@ async def get_activity_logs(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Requisition).where(Requisition.id == req_id))
-    req = result.scalar_one_or_none()
+    """Get activity logs for a requisition.
+
+    Returns a list of activity log entries.
+    """
+    service = RequisitionService(db)
+    req = await service.get_by_id(req_id)
     if not req:
         raise HTTPException(404, "Requisition not found")
 
-    query = (
-        select(ActivityLog, User.first_name, User.last_name)
-        .join(User, ActivityLog.user_id == User.id)
-        .where(ActivityLog.requisition_id == req_id)
-        .order_by(ActivityLog.created_at.desc())
-        .limit(50)
-    )
-    res = await db.execute(query)
-    rows = res.all()
-
+    rows = await service.get_activity(req_id)
     return [
-        ActivityLogOut(
-            id=log.id,
-            requisition_id=log.requisition_id,
-            user_id=log.user_id,
-            action=log.action,
-            details=log.details,
-            old_value=log.old_value,
-            new_value=log.new_value,
-            created_at=log.created_at,
-            user_name=f"{first_name} {last_name}" if first_name and last_name else None,
-        )
-        for log, first_name, last_name in rows
+        ActivityLogOut(**row)
+        for row in rows
     ]

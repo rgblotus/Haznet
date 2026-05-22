@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { api } from '@/services/api'
+import { useAuthStore } from '@/stores/authStore'
 import type { Document } from '@/types/models'
 import {
   FileText, Upload, X, File, Image, FileSpreadsheet, FileArchive,
@@ -115,7 +116,7 @@ export default function DocumentsSection({
       formData.append('category', selectedCategory)
       if (description) formData.append('description', description)
       
-      const token = localStorage.getItem('token')
+      const token = useAuthStore.getState().token
       await fetch(`/api/documents/${requisitionId}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -264,7 +265,7 @@ export default function DocumentsSection({
                               <button className="p-2 rounded-lg hover:bg-white text-slate-400 hover:text-slate-600 transition-colors">
                                 <Download size={16} />
                               </button>
-                              {(role === 'admin' || role === 'procurement_officer' || doc.uploaded_by === localStorage.getItem('userId')) && (
+                              {(role === 'admin' || role === 'procurement_officer' || doc.uploaded_by === useAuthStore.getState().user?.id) && (
                                 <button 
                                   onClick={() => handleDelete(doc.id)}
                                   className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"

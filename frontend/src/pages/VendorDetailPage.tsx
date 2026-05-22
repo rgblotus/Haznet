@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import PageLayout from '@/components/PageLayout'
@@ -17,20 +17,15 @@ const statusFlow = [
 
 export default function VendorDetailPage() {
     const { id } = useParams<{ id: string }>()
-    const [vendor, setVendor] = useState<Awaited<ReturnType<typeof api.vendors.get>> | null>(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        if (!id) return
-        api.vendors.get(id)
-            .then(setVendor)
-            .catch(console.error)
-            .finally(() => setLoading(false))
-    }, [id])
+    const { data: vendor, isLoading } = useQuery({
+        queryKey: ['vendor', id],
+        queryFn: () => api.vendors.get(id!),
+        enabled: !!id,
+    })
 
     const currentStatusIndex = statusFlow.findIndex(s => s.key === vendor?.status?.toLowerCase())
 
-    if (loading) {
+    if (isLoading) {
         return <PageLayout title="Vendor Details"><div className="flex items-center justify-center h-[60vh] skeleton text-slate-400">Loading...</div></PageLayout>
     }
 

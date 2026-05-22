@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from uuid import UUID
@@ -7,32 +7,63 @@ from datetime import datetime, timezone
 from app.database import get_db
 from app.middleware.auth import get_current_user, require_role
 from app.models import (
-    User, Requisition, Tender, RequisitionStageHistory, InternalApprovalDetail,
-    TenderProcess, TenderEvaluation, BidEvaluationDetail, ComparativeStatement,
-    TenderNegotiation, TenderCommitteeRecommendation, OrderExecutionDetail,
-    TenderCancellation, ActivityLog, UserRole, RequisitionStatus, TenderStatus
+    User,
+    Requisition,
+    Tender,
+    Bid,
+    Order,
+    RequisitionStageHistory,
+    InternalApprovalDetail,
+    TenderProcess,
+    TenderEvaluation,
+    BidEvaluationDetail,
+    ComparativeStatement,
+    TenderNegotiation,
+    TenderCommitteeRecommendation,
+    OrderExecutionDetail,
+    TenderCancellation,
+    UserRole,
+    RequisitionStatus,
+    TenderStatus,
+    RequisitionStage,
+    InternalApprovalStatus,
+    TenderEvaluationStage,
 )
 from app.schemas import (
-    InternalApprovalDetailOut, InternalApprovalDetailUpdate,
-    TenderProcessOut, TenderProcessUpdate,
-    TenderEvaluationOut, TenderEvaluationCreate, TenderEvaluationUpdate,
-    BidEvaluationDetailOut, BidEvaluationDetailUpdate,
-    ComparativeStatementOut, ComparativeStatementCreate, ComparativeStatementUpdate,
-    TenderNegotiationOut, TenderNegotiationCreate,
-    TenderCommitteeRecommendationOut, TenderCommitteeRecommendationCreate,
-    OrderExecutionDetailOut, OrderExecutionDetailUpdate,
-    TenderCancellationOut, TenderCancellationCreate,
-    RequisitionStage, InternalApprovalStatus, TenderEvaluationStage,
-    TenderCancellationReason, RequisitionOut,
+    InternalApprovalDetailOut,
+    InternalApprovalDetailUpdate,
+    TenderProcessOut,
+    TenderProcessUpdate,
+    TenderEvaluationOut,
+    TenderEvaluationCreate,
+    TenderEvaluationUpdate,
+    BidEvaluationDetailOut,
+    BidEvaluationDetailUpdate,
+    ComparativeStatementOut,
+    ComparativeStatementCreate,
+    ComparativeStatementUpdate,
+    TenderNegotiationOut,
+    TenderNegotiationCreate,
+    TenderCommitteeRecommendationOut,
+    TenderCommitteeRecommendationCreate,
+    OrderExecutionDetailOut,
+    OrderExecutionDetailUpdate,
+    TenderCancellationOut,
+    TenderCancellationCreate,
+    RequisitionOut,
 )
 from app.api.requisitions import _log_activity
 
 router = APIRouter()
 
 
-async def _get_or_create_internal_approval(db: AsyncSession, requisition_id: UUID) -> InternalApprovalDetail:
+async def _get_or_create_internal_approval(
+    db: AsyncSession, requisition_id: UUID
+) -> InternalApprovalDetail:
     result = await db.execute(
-        select(InternalApprovalDetail).where(InternalApprovalDetail.requisition_id == requisition_id)
+        select(InternalApprovalDetail).where(
+            InternalApprovalDetail.requisition_id == requisition_id
+        )
     )
     approval = result.scalar_one_or_none()
     if not approval:
@@ -42,7 +73,9 @@ async def _get_or_create_internal_approval(db: AsyncSession, requisition_id: UUI
     return approval
 
 
-async def _get_or_create_tender_process(db: AsyncSession, tender_id: UUID) -> TenderProcess:
+async def _get_or_create_tender_process(
+    db: AsyncSession, tender_id: UUID
+) -> TenderProcess:
     result = await db.execute(
         select(TenderProcess).where(TenderProcess.tender_id == tender_id)
     )
@@ -54,15 +87,21 @@ async def _get_or_create_tender_process(db: AsyncSession, tender_id: UUID) -> Te
     return process
 
 
-async def _get_or_create_tender_evaluation(db: AsyncSession, tender_id: UUID, stage: TenderEvaluationStage) -> TenderEvaluation:
+async def _get_or_create_tender_evaluation(
+    db: AsyncSession, tender_id: UUID, stage: TenderEvaluationStage
+) -> TenderEvaluation:
     result = await db.execute(
         select(TenderEvaluation).where(
-            and_(TenderEvaluation.tender_id == tender_id, TenderEvaluation.stage == stage)
+            and_(
+                TenderEvaluation.tender_id == tender_id, TenderEvaluation.stage == stage
+            )
         )
     )
     evaluation = result.scalar_one_or_none()
     if not evaluation:
-        evaluation = TenderEvaluation(tender_id=tender_id, stage=stage, status="in_progress")
+        evaluation = TenderEvaluation(
+            tender_id=tender_id, stage=stage, status="in_progress"
+        )
         db.add(evaluation)
         await db.flush()
     return evaluation
@@ -74,6 +113,10 @@ async def get_workflow_status(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Get the full workflow status for a requisition.
+
+    Returns current stage, approvals, tender process, and evaluation status.
+    """
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
@@ -111,11 +154,15 @@ async def get_workflow_status(
 
     if req.status in (RequisitionStatus.SUBMITTED, RequisitionStatus.UNDER_REVIEW):
         approval_result = await db.execute(
-            select(InternalApprovalDetail).where(InternalApprovalDetail.requisition_id == req_id)
+            select(InternalApprovalDetail).where(
+                InternalApprovalDetail.requisition_id == req_id
+            )
         )
         approval = approval_result.scalar_one_or_none()
         if approval:
-            response["internal_approval"] = InternalApprovalDetailOut.model_validate(approval)
+            response["internal_approval"] = InternalApprovalDetailOut.model_validate(
+                approval
+            )
 
     if req.tender:
         tender_process_result = await db.execute(
@@ -136,13 +183,19 @@ async def get_workflow_status(
             response["evaluation_stage"] = evaluation.stage
 
         cs_result = await db.execute(
-            select(ComparativeStatement)
-            .where(ComparativeStatement.tender_id == req.tender.id, ComparativeStatement.vetted == True)
+            select(ComparativeStatement).where(
+                ComparativeStatement.tender_id == req.tender.id,
+                ComparativeStatement.vetted,
+            )
         )
-        response["comparative_statement_vetted"] = cs_result.scalar_one_or_none() is not None
+        response["comparative_statement_vetted"] = (
+            cs_result.scalar_one_or_none() is not None
+        )
 
         neg_result = await db.execute(
-            select(TenderNegotiation).where(TenderNegotiation.tender_id == req.tender.id)
+            select(TenderNegotiation).where(
+                TenderNegotiation.tender_id == req.tender.id
+            )
         )
         response["negotiation_done"] = neg_result.scalar_one_or_none() is not None
 
@@ -153,9 +206,15 @@ async def get_workflow_status(
 async def update_internal_approval(
     req_id: UUID,
     body: InternalApprovalDetailUpdate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Update internal approval details for a requisition.
+
+    Returns the updated internal approval record.
+    """
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
@@ -165,8 +224,12 @@ async def update_internal_approval(
 
     if body.checklist_completed is not None:
         approval.checklist_completed = body.checklist_completed
-        approval.checklist_completed_at = datetime.now(timezone.utc) if body.checklist_completed else None
-        approval.checklist_completed_by = current_user.id if body.checklist_completed else None
+        approval.checklist_completed_at = (
+            datetime.now(timezone.utc) if body.checklist_completed else None
+        )
+        approval.checklist_completed_by = (
+            current_user.id if body.checklist_completed else None
+        )
         approval.checklist_notes = body.checklist_notes
 
     if body.clarification_required is not None:
@@ -185,7 +248,13 @@ async def update_internal_approval(
     await db.commit()
     await db.refresh(approval)
 
-    await _log_activity(db, req_id, current_user.id, "internal_approval_updated", "Internal approval details updated")
+    await _log_activity(
+        db,
+        req_id,
+        current_user.id,
+        "internal_approval_updated",
+        "Internal approval details updated",
+    )
 
     return InternalApprovalDetailOut.model_validate(approval)
 
@@ -193,20 +262,34 @@ async def update_internal_approval(
 @router.post("/requisition/{req_id}/move-to-tender-creation")
 async def move_to_tender_creation(
     req_id: UUID,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Move a requisition to tender creation after internal approval.
+
+    Returns the requisition with updated status.
+    """
     result = await db.execute(select(Requisition).where(Requisition.id == req_id))
     req = result.scalar_one_or_none()
     if not req:
         raise HTTPException(404, "Requisition not found")
 
-    if req.status not in (RequisitionStatus.SUBMITTED, RequisitionStatus.UNDER_REVIEW, RequisitionStatus.PROCESSING):
-        raise HTTPException(400, "Requisition must be in submitted, under review, or processing state")
+    if req.status not in (
+        RequisitionStatus.SUBMITTED,
+        RequisitionStatus.UNDER_REVIEW,
+        RequisitionStatus.PROCESSING,
+    ):
+        raise HTTPException(
+            400, "Requisition must be in submitted, under review, or processing state"
+        )
 
     approval = await _get_or_create_internal_approval(db, req_id)
     if not approval.checklist_completed:
-        raise HTTPException(400, "Checklist must be completed before moving to tender creation")
+        raise HTTPException(
+            400, "Checklist must be completed before moving to tender creation"
+        )
 
     stage_history = RequisitionStageHistory(
         requisition_id=req_id,
@@ -219,7 +302,13 @@ async def move_to_tender_creation(
 
     req.status = RequisitionStatus.TENDER_AWAITING
 
-    await _log_activity(db, req_id, current_user.id, "internal_approval_completed", "Internal approval completed, moved to tender creation")
+    await _log_activity(
+        db,
+        req_id,
+        current_user.id,
+        "internal_approval_completed",
+        "Internal approval completed, moved to tender creation",
+    )
 
     await db.commit()
     await db.refresh(req)
@@ -230,9 +319,15 @@ async def move_to_tender_creation(
 async def update_tender_process(
     tender_id: UUID,
     body: TenderProcessUpdate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Update tender process details (pre-bid, bid dates, document vetting).
+
+    Returns the updated tender process record.
+    """
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = result.scalar_one_or_none()
     if not tender:
@@ -257,9 +352,15 @@ async def update_tender_process(
 async def create_tender_evaluation(
     tender_id: UUID,
     body: TenderEvaluationCreate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create or get a tender evaluation for a specific stage.
+
+    Returns the evaluation record.
+    """
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = result.scalar_one_or_none()
     if not tender:
@@ -270,7 +371,13 @@ async def create_tender_evaluation(
     await db.commit()
     await db.refresh(evaluation)
 
-    await _log_activity(db, tender.requisition_id, current_user.id, "evaluation_started", f"Started {body.stage.value} evaluation")
+    await _log_activity(
+        db,
+        tender.requisition_id,
+        current_user.id,
+        "evaluation_started",
+        f"Started {body.stage.value} evaluation",
+    )
 
     return TenderEvaluationOut.model_validate(evaluation)
 
@@ -280,10 +387,18 @@ async def update_tender_evaluation(
     tender_id: UUID,
     eval_id: UUID,
     body: TenderEvaluationUpdate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(TenderEvaluation).where(TenderEvaluation.id == eval_id))
+    """Update a tender evaluation (scores, queries, status).
+
+    Returns the updated evaluation record.
+    """
+    result = await db.execute(
+        select(TenderEvaluation).where(TenderEvaluation.id == eval_id)
+    )
     evaluation = result.scalar_one_or_none()
     if not evaluation or evaluation.tender_id != tender_id:
         raise HTTPException(404, "Evaluation not found")
@@ -301,7 +416,13 @@ async def update_tender_evaluation(
     tender_result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = tender_result.scalar_one_or_none()
     if tender:
-        await _log_activity(db, tender.requisition_id, current_user.id, "evaluation_updated", f"Evaluation stage {evaluation.stage.value} updated")
+        await _log_activity(
+            db,
+            tender.requisition_id,
+            current_user.id,
+            "evaluation_updated",
+            f"Evaluation stage {evaluation.stage.value} updated",
+        )
 
     return TenderEvaluationOut.model_validate(evaluation)
 
@@ -312,6 +433,10 @@ async def list_tender_evaluations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """List all evaluations for a tender.
+
+    Returns a list of evaluation records ordered by creation date.
+    """
     result = await db.execute(
         select(TenderEvaluation)
         .where(TenderEvaluation.tender_id == tender_id)
@@ -325,10 +450,18 @@ async def list_tender_evaluations(
 async def evaluate_bid_detail(
     bid_id: UUID,
     body: BidEvaluationDetailUpdate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(BidEvaluationDetail).where(BidEvaluationDetail.bid_id == bid_id))
+    """Evaluate a bid's technical and commercial details.
+
+    Returns the bid evaluation record.
+    """
+    result = await db.execute(
+        select(BidEvaluationDetail).where(BidEvaluationDetail.bid_id == bid_id)
+    )
     bid_eval = result.scalar_one_or_none()
     if not bid_eval:
         bid_eval = BidEvaluationDetail(bid_id=bid_id)
@@ -366,9 +499,15 @@ async def evaluate_bid_detail(
 async def create_comparative_statement(
     tender_id: UUID,
     body: ComparativeStatementCreate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a comparative statement for a tender.
+
+    Returns the created comparative statement.
+    """
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = result.scalar_one_or_none()
     if not tender:
@@ -382,7 +521,13 @@ async def create_comparative_statement(
     tender_result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = tender_result.scalar_one_or_none()
     if tender and tender.requisition_id:
-        await _log_activity(db, tender.requisition_id, current_user.id, "comparative_statement_created", "Comparative statement created")
+        await _log_activity(
+            db,
+            tender.requisition_id,
+            current_user.id,
+            "comparative_statement_created",
+            "Comparative statement created",
+        )
 
     return ComparativeStatementOut.model_validate(cs)
 
@@ -391,10 +536,18 @@ async def create_comparative_statement(
 async def update_comparative_statement(
     cs_id: UUID,
     body: ComparativeStatementUpdate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(ComparativeStatement).where(ComparativeStatement.id == cs_id))
+    """Update or vet a comparative statement.
+
+    Returns the updated comparative statement.
+    """
+    result = await db.execute(
+        select(ComparativeStatement).where(ComparativeStatement.id == cs_id)
+    )
     cs = result.scalar_one_or_none()
     if not cs:
         raise HTTPException(404, "Comparative statement not found")
@@ -414,7 +567,13 @@ async def update_comparative_statement(
     tender_result = await db.execute(select(Tender).where(Tender.id == cs.tender_id))
     tender = tender_result.scalar_one_or_none()
     if tender and tender.requisition_id:
-        await _log_activity(db, tender.requisition_id, current_user.id, "comparative_statement_vetted", "Comparative statement vetted")
+        await _log_activity(
+            db,
+            tender.requisition_id,
+            current_user.id,
+            "comparative_statement_vetted",
+            "Comparative statement vetted",
+        )
 
     return ComparativeStatementOut.model_validate(cs)
 
@@ -423,9 +582,15 @@ async def update_comparative_statement(
 async def create_negotiation(
     tender_id: UUID,
     body: TenderNegotiationCreate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a price negotiation record for a tender.
+
+    Returns the created negotiation record.
+    """
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = result.scalar_one_or_none()
     if not tender:
@@ -445,7 +610,13 @@ async def create_negotiation(
     await db.refresh(negotiation)
 
     if tender.requisition_id:
-        await _log_activity(db, tender.requisition_id, current_user.id, "negotiation_completed", "Price negotiation completed")
+        await _log_activity(
+            db,
+            tender.requisition_id,
+            current_user.id,
+            "negotiation_completed",
+            "Price negotiation completed",
+        )
 
     return TenderNegotiationOut.model_validate(negotiation)
 
@@ -454,9 +625,15 @@ async def create_negotiation(
 async def create_tender_recommendation(
     tender_id: UUID,
     body: TenderCommitteeRecommendationCreate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a tender committee recommendation.
+
+    Returns the created recommendation record.
+    """
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = result.scalar_one_or_none()
     if not tender:
@@ -477,7 +654,13 @@ async def create_tender_recommendation(
     await db.refresh(recommendation)
 
     if tender.requisition_id:
-        await _log_activity(db, tender.requisition_id, current_user.id, "tender_committee_recommendation", f"Tender committee recommendation: {body.recommendation_type}")
+        await _log_activity(
+            db,
+            tender.requisition_id,
+            current_user.id,
+            "tender_committee_recommendation",
+            f"Tender committee recommendation: {body.recommendation_type}",
+        )
 
     return TenderCommitteeRecommendationOut.model_validate(recommendation)
 
@@ -485,10 +668,20 @@ async def create_tender_recommendation(
 @router.patch("/recommendation/{rec_id}/approve")
 async def approve_recommendation(
     rec_id: UUID,
-    current_user: User = Depends(require_role(UserRole.CNP_HOD, UserRole.OIC, UserRole.ADMIN)),
+    current_user: User = Depends(
+        require_role(UserRole.CNP_HOD, UserRole.OIC, UserRole.ADMIN)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(TenderCommitteeRecommendation).where(TenderCommitteeRecommendation.id == rec_id))
+    """Approve a tender committee recommendation.
+
+    Returns the approved recommendation record.
+    """
+    result = await db.execute(
+        select(TenderCommitteeRecommendation).where(
+            TenderCommitteeRecommendation.id == rec_id
+        )
+    )
     recommendation = result.scalar_one_or_none()
     if not recommendation:
         raise HTTPException(404, "Recommendation not found")
@@ -500,10 +693,18 @@ async def approve_recommendation(
     await db.commit()
     await db.refresh(recommendation)
 
-    tender_result = await db.execute(select(Tender).where(Tender.id == recommendation.tender_id))
+    tender_result = await db.execute(
+        select(Tender).where(Tender.id == recommendation.tender_id)
+    )
     tender = tender_result.scalar_one_or_none()
     if tender and tender.requisition_id:
-        await _log_activity(db, tender.requisition_id, current_user.id, "recommendation_approved", "Tender committee recommendation approved")
+        await _log_activity(
+            db,
+            tender.requisition_id,
+            current_user.id,
+            "recommendation_approved",
+            "Tender committee recommendation approved",
+        )
 
     return TenderCommitteeRecommendationOut.model_validate(recommendation)
 
@@ -512,10 +713,18 @@ async def approve_recommendation(
 async def create_order_execution_detail(
     order_id: UUID,
     body: OrderExecutionDetailUpdate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(OrderExecutionDetail).where(OrderExecutionDetail.order_id == order_id))
+    """Create or update order execution details (contract, security deposit).
+
+    Returns the updated execution detail record.
+    """
+    result = await db.execute(
+        select(OrderExecutionDetail).where(OrderExecutionDetail.order_id == order_id)
+    )
     detail = result.scalar_one_or_none()
     if not detail:
         detail = OrderExecutionDetail(order_id=order_id)
@@ -548,7 +757,13 @@ async def create_order_execution_detail(
     order_result = await db.execute(select(Order).where(Order.id == order_id))
     order = order_result.scalar_one_or_none()
     if order and order.requisition_id:
-        await _log_activity(db, order.requisition_id, current_user.id, "order_execution_updated", "Order execution detail updated")
+        await _log_activity(
+            db,
+            order.requisition_id,
+            current_user.id,
+            "order_execution_updated",
+            "Order execution detail updated",
+        )
 
     return OrderExecutionDetailOut.model_validate(detail)
 
@@ -557,9 +772,17 @@ async def create_order_execution_detail(
 async def cancel_tender(
     tender_id: UUID,
     body: TenderCancellationCreate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC, UserRole.ADMIN)),
+    current_user: User = Depends(
+        require_role(
+            UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC, UserRole.ADMIN
+        )
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Cancel a tender with a specified reason.
+
+    Returns the cancellation record.
+    """
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = result.scalar_one_or_none()
     if not tender:
@@ -579,14 +802,22 @@ async def cancel_tender(
     tender.status = TenderStatus.CANCELLED
 
     if tender.requisition_id:
-        req_result = await db.execute(select(Requisition).where(Requisition.id == tender.requisition_id))
+        req_result = await db.execute(
+            select(Requisition).where(Requisition.id == tender.requisition_id)
+        )
         req = req_result.scalar_one_or_none()
         if req:
             req.status = RequisitionStatus.CANCELLED
             req.return_reason = f"Tender cancelled: {body.reason.value}"
             cancellation.requisition_status_after = RequisitionStatus.CANCELLED.value
 
-        await _log_activity(db, tender.requisition_id, current_user.id, "tender_cancelled", f"Tender cancelled: {body.reason.value}")
+        await _log_activity(
+            db,
+            tender.requisition_id,
+            current_user.id,
+            "tender_cancelled",
+            f"Tender cancelled: {body.reason.value}",
+        )
 
     await db.commit()
     await db.refresh(tender)
@@ -594,15 +825,18 @@ async def cancel_tender(
     return TenderCancellationOut.model_validate(cancellation)
 
 
-from app.models import Bid, Order
-
-
 @router.post("/tender/{tender_id}/award-to-l1")
 async def award_tender_to_l1(
     tender_id: UUID,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Award a tender to the lowest bidder (L1).
+
+    Returns a success message with winning bid details.
+    """
     result = await db.execute(select(Tender).where(Tender.id == tender_id))
     tender = result.scalar_one_or_none()
     if not tender:
@@ -625,13 +859,25 @@ async def award_tender_to_l1(
     tender.status = TenderStatus.AWARDED
 
     if tender.requisition_id:
-        req_result = await db.execute(select(Requisition).where(Requisition.id == tender.requisition_id))
+        req_result = await db.execute(
+            select(Requisition).where(Requisition.id == tender.requisition_id)
+        )
         req = req_result.scalar_one_or_none()
         if req:
             req.status = RequisitionStatus.TENDER_AWARDED
 
-        await _log_activity(db, tender.requisition_id, current_user.id, "tender_awarded", f"Tender awarded to L1 bidder")
+        await _log_activity(
+            db,
+            tender.requisition_id,
+            current_user.id,
+            "tender_awarded",
+            "Tender awarded to L1 bidder",
+        )
 
     await db.commit()
 
-    return {"message": "Tender awarded to L1 bidder", "bid_id": str(l1_bid.id), "amount": l1_bid.amount}
+    return {
+        "message": "Tender awarded to L1 bidder",
+        "bid_id": str(l1_bid.id),
+        "amount": l1_bid.amount,
+    }

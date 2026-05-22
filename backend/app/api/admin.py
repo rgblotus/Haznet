@@ -8,9 +8,14 @@ from app.database import get_db
 from app.middleware.auth import get_current_user, require_role, hash_password
 from app.models import User, Department, UserRole
 from app.schemas import (
-    UserCreate, UserUpdate, UserOut,
-    DepartmentCreate, DepartmentUpdate, DepartmentOut,
-    PaginatedResponse, create_pagination_meta,
+    UserCreate,
+    UserUpdate,
+    UserOut,
+    DepartmentCreate,
+    DepartmentUpdate,
+    DepartmentOut,
+    PaginatedResponse,
+    create_pagination_meta,
 )
 
 router = APIRouter()
@@ -33,11 +38,20 @@ async def list_users(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    """List users with optional filtering and pagination (admin only).
+
+    Returns paginated users filtered by search, role, or active status.
+    """
     query = select(User)
     count_query = select(func.count(User.id))
 
     if search:
-        search_filter = User.username.ilike(f"%{search}%") | User.email.ilike(f"%{search}%") | User.first_name.ilike(f"%{search}%") | User.last_name.ilike(f"%{search}%")
+        search_filter = (
+            User.username.ilike(f"%{search}%")
+            | User.email.ilike(f"%{search}%")
+            | User.first_name.ilike(f"%{search}%")
+            | User.last_name.ilike(f"%{search}%")
+        )
         query = query.where(search_filter)
         count_query = count_query.where(search_filter)
 
@@ -52,7 +66,11 @@ async def list_users(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    query = query.options(selectinload(User.department)).offset((page - 1) * page_size).limit(page_size)
+    query = (
+        query.options(selectinload(User.department))
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     result = await db.execute(query)
     users = result.scalars().all()
 
@@ -68,15 +86,21 @@ async def create_user(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a new user (admin only).
+
+    Returns the created user details.
+    """
     result = await db.execute(
-        select(User).where((User.username == body.username) | (User.email == body.email))
+        select(User).where(
+            (User.username == body.username) | (User.email == body.email)
+        )
     )
     if result.scalar_one_or_none():
         raise HTTPException(400, "Username or email already exists")
 
     user = User(
         username=body.username,
-        email=body.email,
+        email=body.email.lower(),
         hashed_password=hash_password(body.password),
         first_name=body.first_name,
         last_name=body.last_name,
@@ -101,7 +125,13 @@ async def get_user(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(User).options(selectinload(User.department)).where(User.id == user_id))
+    """Get a single user by ID (admin only).
+
+    Returns the user details.
+    """
+    result = await db.execute(
+        select(User).options(selectinload(User.department)).where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(404, "User not found")
@@ -115,7 +145,13 @@ async def update_user(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(User).options(selectinload(User.department)).where(User.id == user_id))
+    """Update a user's details (admin only).
+
+    Returns the updated user.
+    """
+    result = await db.execute(
+        select(User).options(selectinload(User.department)).where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(404, "User not found")
@@ -123,7 +159,7 @@ async def update_user(
     update_data = body.model_dump(exclude_unset=True)
     if "password" in update_data:
         update_data["hashed_password"] = hash_password(update_data.pop("password"))
-    
+
     for key, value in update_data.items():
         setattr(user, key, value)
 
@@ -138,6 +174,10 @@ async def delete_user(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Deactivate a user (soft delete, admin only).
+
+    Returns a success confirmation message.
+    """
     if user_id == current_user.id:
         raise HTTPException(400, "Cannot delete your own account")
 
@@ -157,8 +197,14 @@ async def create_department(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a new department (admin only).
+
+    Returns the created department.
+    """
     result = await db.execute(
-        select(Department).where((Department.name == body.name) | (Department.code == body.code))
+        select(Department).where(
+            (Department.name == body.name) | (Department.code == body.code)
+        )
     )
     if result.scalar_one_or_none():
         raise HTTPException(400, "Department already exists")
@@ -178,11 +224,17 @@ async def list_departments(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """List departments with optional pagination and search.
+
+    Returns paginated departments.
+    """
     query = select(Department)
     count_query = select(func.count(Department.id))
 
     if search:
-        search_filter = Department.name.ilike(f"%{search}%") | Department.code.ilike(f"%{search}%")
+        search_filter = Department.name.ilike(f"%{search}%") | Department.code.ilike(
+            f"%{search}%"
+        )
         query = query.where(search_filter)
         count_query = count_query.where(search_filter)
 
@@ -205,6 +257,10 @@ async def get_department(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Get a single department by ID.
+
+    Returns the department details.
+    """
     result = await db.execute(select(Department).where(Department.id == dept_id))
     dept = result.scalar_one_or_none()
     if not dept:
@@ -219,6 +275,10 @@ async def update_department(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Update a department (admin only).
+
+    Returns the updated department.
+    """
     result = await db.execute(select(Department).where(Department.id == dept_id))
     dept = result.scalar_one_or_none()
     if not dept:

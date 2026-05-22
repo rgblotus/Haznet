@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '@/services/api'
@@ -11,13 +11,13 @@ import { FadeIn } from '@/components/ui/AnimatedList'
 import { WelcomeHeader } from '@/components/shared'
 import { motion } from 'framer-motion'
 import {
-    Search, Plus, FileText, Clock, CheckCircle, User, Calendar,
+    Search, Plus, FileText, Clock, CheckCircle, Calendar,
     Send, Layers, Eye, LayoutGrid, List, ChevronLeft, ChevronRight,
-    X, Package, Download, RefreshCw, Settings, Filter,
-    Grid3X3, Table2, Zap, ClipboardList, Shield, Check
+    X, Download, Grid3X3, Table2, ClipboardList, Shield, Check
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
+import type { Requisition, Priority } from '@/types/models'
 
 const statusOptions = [
     { value: 'all', label: 'All Statuses', icon: Layers, color: 'neutral' },
@@ -35,7 +35,7 @@ const priorityColors: Record<string, string> = {
     Low: 'bg-emerald-50 text-emerald-600 border-emerald-200',
 }
 
-function StatusFilterButton({ option, isActive, onClick }: { option: any; isActive: boolean; onClick: () => void }) {
+function StatusFilterButton({ option, isActive, onClick }: { option: { value: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; color?: string }; isActive: boolean; onClick: () => void }) {
     const Icon = option.icon
     const colorMap: Record<string, string> = {
         neutral: isActive ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : 'hover:bg-slate-50 border-transparent',
@@ -46,7 +46,7 @@ function StatusFilterButton({ option, isActive, onClick }: { option: any; isActi
     }
     
     const btnClass = isActive 
-        ? `flex items-center gap-3 w-full px-3 py-2.5 rounded-lg cursor-pointer text-left transition-all border ${colorMap[option.color] || colorMap.neutral}`
+        ? `flex items-center gap-3 w-full px-3 py-2.5 rounded-lg cursor-pointer text-left transition-all border ${colorMap[option.color || 'neutral']}`
         : 'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg cursor-pointer text-left transition-all border border-transparent hover:bg-slate-50'
     return (
         <button onClick={onClick} className={btnClass}>
@@ -58,7 +58,7 @@ function StatusFilterButton({ option, isActive, onClick }: { option: any; isActi
     )
 }
 
-function ActionButton({ icon: Icon, label, onClick, active, color = 'indigo' }: { icon: any; label: string; onClick?: () => void; active?: boolean; color?: string }) {
+function ActionButton({ icon: Icon, label, onClick, active, color = 'indigo' }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; onClick?: () => void; active?: boolean; color?: string }) {
     const activeClass = active ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : ''
     const btnClass = active 
         ? `flex items-center gap-3 w-full px-3 py-2.5 rounded-lg cursor-pointer text-left transition-all border ${activeClass}`
@@ -156,7 +156,7 @@ function RightSidebar({
     )
 }
 
-function RequisitionCard({ req }: { req: any }) {
+function RequisitionCard({ req }: { req: Requisition }) {
     return (
         <Link
             to={'/requisitions/' + req.id}
@@ -234,7 +234,7 @@ export default function RequisitionsPage() {
     })
 
     const createMut = useMutation({
-        mutationFn: (data: any) => api.requisitions.create(data),
+        mutationFn: (data: Partial<Requisition>) => api.requisitions.create(data),
         onSuccess: () => {
             setShowModal(false)
             setFormData({ description: '', category: 'materials', priority: 'Medium', quantity: '1', unit_price_estimate: '', total_estimate: '', financial_year: 'FY 2025-2026', sap_requisition_number: '', requisition_create_date: new Date().toISOString().split('T')[0], requisition_hod_release_date: '', job_description: '', cost_estimate: '', startup_applicable: false, industry: '', sector: '', contract_period_months: '' })
@@ -247,12 +247,12 @@ export default function RequisitionsPage() {
     const totalPages = meta?.total_pages || 1
     const totalCount = meta?.total || 0
 
-    const stats = [
+    const stats = useMemo(() => [
         { label: 'Total', value: totalCount, icon: FileText, color: 'from-indigo-500 to-violet-500' },
         { label: 'Draft', value: reqs.filter((r: any) => r.status === 'draft').length, icon: FileText, color: 'from-slate-400 to-slate-500' },
         { label: 'Submitted', value: reqs.filter((r: any) => r.status === 'submitted').length, icon: Send, color: 'from-amber-500 to-orange-500' },
         { label: 'Processing', value: reqs.filter((r: any) => r.status === 'processing').length, icon: Clock, color: 'from-cyan-500 to-cyan-600' },
-    ]
+    ], [totalCount, reqs])
 
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -260,8 +260,9 @@ export default function RequisitionsPage() {
         if (formData.sap_requisition_number && !/^\d{8}$/.test(formData.sap_requisition_number)) {
             return
         }
-        const payload = {
+        const payload: Partial<Requisition> = {
             ...formData,
+            priority: formData.priority as Priority,
             title: formData.job_description.slice(0, 50) || `Requisition ${formData.sap_requisition_number}`,
             description: formData.job_description,
             quantity: parseInt(formData.quantity) || 1,
@@ -271,7 +272,7 @@ export default function RequisitionsPage() {
             contract_period_months: formData.contract_period_months ? parseInt(formData.contract_period_months) : undefined,
             requisition_create_date: formData.requisition_create_date ? new Date(formData.requisition_create_date).toISOString() : undefined,
             requisition_hod_release_date: formData.requisition_hod_release_date ? new Date(formData.requisition_hod_release_date).toISOString() : undefined,
-        }
+        } as Partial<Requisition>
         createMut.mutate(payload)
     }
 

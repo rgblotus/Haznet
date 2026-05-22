@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import PageLayout from '@/components/PageLayout'
@@ -30,9 +31,6 @@ const statusBadgeColors: Record<string, string> = {
 
 export default function TenderDetailPage() {
     const { id } = useParams<{ id: string }>()
-    const [tender, setTender] = useState<any>(null)
-    const [bids, setBids] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState<string | null>(null)
     const [showAwardModal, setShowAwardModal] = useState(false)
     const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
@@ -42,16 +40,23 @@ export default function TenderDetailPage() {
     const canProcess = canCreateTender(role) || canAwardBid(role)
     const isAdmin = role === 'admin'
 
-    useEffect(() => {
-        if (!id) return
-        api.tenders.get(id)
-            .then((data) => {
-                setTender(data)
-                api.tenders.getBids(id).then(setBids).catch(() => {})
-            })
-            .catch(console.error)
-            .finally(() => setLoading(false))
-    }, [id])
+    const { data: fetchedTender, isLoading } = useQuery({
+        queryKey: ['tender', id],
+        queryFn: () => api.tenders.get(id!),
+        enabled: !!id,
+    })
+
+    const [tender, setTender] = useState<any>(undefined)
+    useEffect(() => { if (fetchedTender) setTender(fetchedTender) }, [fetchedTender])
+
+    const { data: fetchedBids = [] } = useQuery({
+        queryKey: ['tender-bids', id],
+        queryFn: () => api.tenders.getBids(id!),
+        enabled: !!id,
+    })
+
+    const [bids, setBids] = useState<any[]>([])
+    useEffect(() => { if (fetchedBids?.length) setBids(fetchedBids) }, [fetchedBids])
 
     const currentStatusIndex = statusFlow.findIndex(s => s.key === tender?.status)
 
@@ -79,15 +84,16 @@ export default function TenderDetailPage() {
             }
             setShowAwardModal(false)
             setSelectedBidId(null)
-        } catch (err: any) {
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Action failed'
             console.error(err)
-            alert(err.message || 'Action failed')
+            alert(msg)
         } finally {
             setActionLoading(null)
         }
     }
 
-    if (loading) {
+    if (isLoading) {
         return <PageLayout title="Tender Details"><div className="flex items-center justify-center h-[60vh] skeleton text-slate-400">Loading...</div></PageLayout>
     }
 

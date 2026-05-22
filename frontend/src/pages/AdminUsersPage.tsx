@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, HttpError } from '@/services/api'
 import PageLayout from '@/components/PageLayout'
@@ -9,8 +9,8 @@ import { FadeIn } from '@/components/ui/AnimatedList'
 import { WelcomeHeader } from '@/components/shared'
 import { motion } from 'framer-motion'
 import { 
-    Plus, Search, Users, Shield, Mail, Phone, Edit2, Trash2, 
-    User, X, Check, Building2, Calendar, AlertCircle, Eye
+    Plus, Search, Users, Shield, Mail, Edit2, Trash2, 
+    X, Check, Building2, AlertCircle
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
@@ -84,6 +84,11 @@ export default function AdminUsersPage() {
     const activeCount = users.filter((u: any) => u.is_active).length
     const adminCount = users.filter((u: any) => u.role === 'admin').length
 
+    const stats = useMemo(() => [
+        { label: 'Total Users', value: users.length, icon: Users, color: 'from-indigo-500 to-indigo-600' },
+        { label: 'Active Users', value: activeCount, icon: Check, color: 'from-emerald-500 to-emerald-600' },
+        { label: 'Admins', value: adminCount, icon: Shield, color: 'from-rose-500 to-rose-600' },
+    ], [users])
 
     return (
         <PageLayout 
@@ -104,11 +109,7 @@ export default function AdminUsersPage() {
 
                 <FadeIn delay={0.1}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[
-                        { label: 'Total Users', value: users.length, icon: Users, color: 'from-indigo-500 to-indigo-600' },
-                        { label: 'Active Users', value: activeCount, icon: Check, color: 'from-emerald-500 to-emerald-600' },
-                        { label: 'Admins', value: adminCount, icon: Shield, color: 'from-rose-500 to-rose-600' },
-                    ].map((stat) => (
+                    {stats.map((stat) => (
                         <div 
                             key={stat.label}
                             className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-slate-100/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"

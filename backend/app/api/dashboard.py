@@ -5,8 +5,19 @@ from sqlalchemy import select, func, and_, or_, case
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models import User, Requisition, Tender, Vendor, Order, PostOrder
-from app.models.enums import RequisitionStatus, TenderStatus, OrderStatus, PostOrderStatus, UserRole
-from app.schemas import DashboardStats, ActivityItem, PaginatedResponse, create_pagination_meta
+from app.models.enums import (
+    RequisitionStatus,
+    TenderStatus,
+    OrderStatus,
+    PostOrderStatus,
+    UserRole,
+)
+from app.schemas import (
+    DashboardStats,
+    ActivityItem,
+    PaginatedResponse,
+    create_pagination_meta,
+)
 
 router = APIRouter()
 
@@ -27,13 +38,24 @@ PENDING_APPROVAL_STATUSES = [
 
 
 def _is_admin_or_proc(user: User) -> bool:
-    return user.role in (UserRole.ADMIN, UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD, UserRole.OIC)
+    return user.role in (
+        UserRole.ADMIN,
+        UserRole.PROCUREMENT_OFFICER,
+        UserRole.CNP_HOD,
+        UserRole.OIC,
+    )
 
 
 @router.get("/stats", response_model=DashboardStats)
-async def get_stats(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_stats(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Get dashboard statistics for the current user.
+
+    Returns aggregated counts of requisitions, tenders, orders, and vendors.
+    """
     is_privileged = _is_admin_or_proc(current_user)
-    
+
     if is_privileged:
         dept_filter = None
     elif current_user.role == UserRole.INDENTOR:
@@ -51,11 +73,42 @@ async def get_stats(current_user: User = Depends(get_current_user), db: AsyncSes
 
     req_base = select(
         func.count(Requisition.id).label("total"),
-        func.sum(case((Requisition.status.in_(PENDING_APPROVAL_STATUSES), 1), else_=0)).label("pending_approval"),
-        func.sum(case((Requisition.status.in_(PROCESSING_STATUSES), 1), else_=0)).label("in_progress"),
-        func.sum(case((Requisition.status == RequisitionStatus.COMPLETED, 1), else_=0)).label("completed"),
-        func.sum(case((and_(Requisition.current_owner_id == current_user.id, Requisition.status.in_(PROCESSING_STATUSES)), 1), else_=0)).label("my_pending"),
-        func.sum(case((Requisition.creator_id == current_user.id, 1), else_=0)).label("my_created"),
+        func.sum(
+            case((Requisition.status.in_(PENDING_APPROVAL_STATUSES), 1), else_=0)
+        ).label("pending_approval"),
+        func.sum(case((Requisition.status.in_(PROCESSING_STATUSES), 1), else_=0)).label(
+            "in_progress"
+        ),
+        func.sum(
+            case((Requisition.status == RequisitionStatus.COMPLETED, 1), else_=0)
+        ).label("completed"),
+        func.sum(
+            case(
+                (
+                    and_(
+                        Requisition.current_owner_id == current_user.id,
+                        Requisition.status.in_(PROCESSING_STATUSES),
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ).label("my_pending"),
+        func.sum(case((Requisition.creator_id == current_user.id, 1), else_=0)).label(
+            "my_created"
+        ),
+        func.sum(
+            case(
+                (
+                    and_(
+                        Requisition.creator_id == current_user.id,
+                        Requisition.status == RequisitionStatus.RETURNED,
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ).label("returned"),
     )
     if dept_filter is not None:
         req_base = req_base.where(dept_filter)
@@ -64,14 +117,18 @@ async def get_stats(current_user: User = Depends(get_current_user), db: AsyncSes
 
     tender_result = await db.execute(
         select(func.count(Tender.id)).where(
-            Tender.status.in_([TenderStatus.BIDDING, TenderStatus.EVALUATING, TenderStatus.PUBLISHED])
+            Tender.status.in_(
+                [TenderStatus.BIDDING, TenderStatus.EVALUATING, TenderStatus.PUBLISHED]
+            )
         )
     )
     active_tenders = tender_result.scalar() or 0
 
     order_result = await db.execute(
         select(func.count(Order.id)).where(
-            Order.status.in_([OrderStatus.DRAFT, OrderStatus.APPROVED, OrderStatus.ISSUED])
+            Order.status.in_(
+                [OrderStatus.DRAFT, OrderStatus.APPROVED, OrderStatus.ISSUED]
+            )
         )
     )
     pending_orders = order_result.scalar() or 0
@@ -86,18 +143,6 @@ async def get_stats(current_user: User = Depends(get_current_user), db: AsyncSes
     vendor_result = await db.execute(select(func.count(Vendor.id)))
     total_vendors = vendor_result.scalar() or 0
 
-    my_pending = (req_row.my_pending or 0)
-
-    returned_result = await db.execute(
-        select(func.count(Requisition.id)).where(
-            and_(
-                Requisition.creator_id == current_user.id,
-                Requisition.status == RequisitionStatus.RETURNED,
-            )
-        )
-    )
-    returned_count = returned_result.scalar() or 0
-
     return DashboardStats(
         total_requisitions=req_row.total or 0,
         pending_approval=req_row.pending_approval or 0,
@@ -108,7 +153,7 @@ async def get_stats(current_user: User = Depends(get_current_user), db: AsyncSes
         active_tenders=active_tenders,
         pending_orders=pending_orders,
         pending_receipts=pending_receipts,
-        my_pending=my_pending + returned_count,
+        my_pending=(req_row.my_pending or 0) + (req_row.returned or 0),
     )
 
 
@@ -119,6 +164,10 @@ async def get_activity(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Get recent activity feed for the current user.
+
+    Returns paginated activity items based on user role.
+    """
     base_filter = []
     if current_user.role == UserRole.INDENTOR:
         base_filter.append(Requisition.creator_id == current_user.id)
@@ -132,7 +181,11 @@ async def get_activity(
                 Requisition.current_owner_id == current_user.id,
             )
         )
-    elif current_user.role in (UserRole.OIC, UserRole.ADMIN, UserRole.PROCUREMENT_OFFICER):
+    elif current_user.role in (
+        UserRole.OIC,
+        UserRole.ADMIN,
+        UserRole.PROCUREMENT_OFFICER,
+    ):
         pass
 
     count_query = select(func.count(Requisition.id))
@@ -170,7 +223,13 @@ async def get_activity(
 
 
 @router.get("/summary")
-async def get_summary(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_summary(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Get a summary of the user's requisitions and assignments.
+
+    Returns recent requisitions, assigned count, and user role info.
+    """
     if current_user.role == UserRole.INDENTOR:
         recent_reqs = await db.execute(
             select(Requisition)
@@ -180,21 +239,20 @@ async def get_summary(current_user: User = Depends(get_current_user), db: AsyncS
         )
     else:
         recent_reqs = await db.execute(
-            select(Requisition)
-            .order_by(Requisition.created_at.desc())
-            .limit(5)
+            select(Requisition).order_by(Requisition.created_at.desc()).limit(5)
         )
     my_requisitions = recent_reqs.scalars().all()
 
     assigned_reqs = await db.execute(
-        select(func.count(Requisition.id))
-        .where(
+        select(func.count(Requisition.id)).where(
             Requisition.current_owner_id == current_user.id,
-            Requisition.status.in_([
-                RequisitionStatus.UNDER_REVIEW,
-                RequisitionStatus.PROCESSING,
-                RequisitionStatus.INVENTORY_CHECKED
-            ])
+            Requisition.status.in_(
+                [
+                    RequisitionStatus.UNDER_REVIEW,
+                    RequisitionStatus.PROCESSING,
+                    RequisitionStatus.INVENTORY_CHECKED,
+                ]
+            ),
         )
     )
     assigned_count = assigned_reqs.scalar() or 0

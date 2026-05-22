@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 import {
     ArrowRight,
@@ -10,7 +11,6 @@ import {
     LayoutDashboard,
     PieChart,
     Hexagon,
-    Users,
     CheckCircle,
     TrendingUp,
 } from 'lucide-react'
@@ -108,6 +108,12 @@ const colorMap: Record<
         border: 'border-rose-200',
         icon: 'text-rose-600',
         glow: 'hover:shadow-rose-500/20',
+    },
+    slate: {
+        bg: 'bg-slate-100',
+        border: 'border-slate-200',
+        icon: 'text-slate-600',
+        glow: 'hover:shadow-slate-500/20',
     },
 }
 
@@ -254,17 +260,19 @@ export default function LandingPage() {
                                             time: '1h ago',
                                             color: 'amber',
                                         },
-                                    ].map((item, i) => (
+                                    ].map((item, i) => {
+                                        const c = colorMap[item.color] || colorMap.slate
+                                        return (
                                         <div
                                             key={i}
                                             className="flex items-center gap-3 p-3 rounded-xl border border-slate-100/50 bg-white/50 hover:shadow-md hover:shadow-slate-200/30 transition-all cursor-pointer group"
                                         >
                                             <div
-                                                className={`w-9 h-9 rounded-lg bg-${item.color}-100 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}
+                                                className={cn('w-9 h-9 rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', c.bg)}
                                             >
                                                 <item.icon
                                                     size={16}
-                                                    className={`text-${item.color}-600`}
+                                                    className={c.icon}
                                                 />
                                             </div>
                                             <p className="text-sm font-medium text-slate-700 flex-1 group-hover:text-indigo-600 transition-colors">
@@ -274,7 +282,7 @@ export default function LandingPage() {
                                                 {item.time}
                                             </span>
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
                                     {[
@@ -300,16 +308,18 @@ export default function LandingPage() {
                                             value: stats?.active_orders ?? '-',
                                             color: 'violet',
                                         },
-                                    ].map((item, i) => (
+                                    ].map((item, i) => {
+                                        const c = colorMap[item.color] || colorMap.slate
+                                        return (
                                         <div
                                             key={i}
                                             className="p-3 rounded-xl border border-slate-100/50 bg-gradient-to-br from-white to-slate-50/50 text-center hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer"
                                         >
                                             <div
-                                                className={`w-8 h-8 rounded-lg bg-${item.color}-100 flex items-center justify-center mx-auto mb-2 shadow-sm`}
+                                                className={cn('w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2 shadow-sm', c.bg)}
                                             >
                                                 <span
-                                                    className={`text-${item.color}-600 font-bold text-xs`}
+                                                    className={cn('font-bold text-xs', c.icon)}
                                                 >
                                                     {String(item.value).charAt(
                                                         0,
@@ -320,7 +330,7 @@ export default function LandingPage() {
                                                 {item.label}
                                             </p>
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             </div>
                         </div>
@@ -345,7 +355,7 @@ export default function LandingPage() {
                             return (
                                 <div
                                     key={i}
-                                    className={`group p-6 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 hover:shadow-xl hover:shadow-${feature.color}-500/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer`}
+                                    className={cn('group p-6 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 hover:-translate-y-1 transition-all duration-300 cursor-pointer', colors.glow)}
                                 >
                                     <div
                                         className={`w-12 h-12 rounded-xl ${colors.bg} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}

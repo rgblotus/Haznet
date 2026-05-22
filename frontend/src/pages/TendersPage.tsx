@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '@/services/api'
@@ -10,8 +10,9 @@ import { EmptyState, TableSkeleton, CardSkeleton } from '@/components/ui/skeleto
 import { FadeIn } from '@/components/ui/AnimatedList'
 import { WelcomeHeader } from '@/components/shared'
 import { motion } from 'framer-motion'
-import { Plus, Calendar, Gavel, DollarSign, Eye, LayoutGrid, List, Search, TrendingUp, FileText, Award, Clock, X, Lightbulb, ChevronLeft, ChevronRight, ClipboardList, Download, RefreshCw, Table2, Grid3X3, Zap, Filter } from 'lucide-react'
+import { Plus, Calendar, Gavel, DollarSign, Eye, LayoutGrid, List, Search, TrendingUp, Award, X, Lightbulb, ChevronLeft, ChevronRight, Grid3X3 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import type { Tender } from '@/types/models'
 import { cn } from '@/lib/utils'
 
 const statusOptions = [
@@ -30,7 +31,7 @@ const colorMap: Record<string, string> = {
     success: 'bg-emerald-50 text-emerald-600 border-emerald-200',
 }
 
-function ActionButton({ icon: Icon, label, onClick, active, color = 'indigo', href }: { icon: any; label: string; onClick?: () => void; active?: boolean; color?: string; href?: string }) {
+function ActionButton({ icon: Icon, label, onClick, active, color = 'indigo', href }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; onClick?: () => void; active?: boolean; color?: string; href?: string }) {
     const colorClasses: Record<string, string> = {
         indigo: active ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : 'hover:bg-slate-50 border-transparent',
         violet: active ? 'bg-violet-50 border-violet-300 text-violet-600' : 'hover:bg-slate-50 border-transparent',
@@ -136,7 +137,7 @@ function RightSidebar({ onStatusFilter, currentStatus, viewMode, onViewModeChang
     )
 }
 
-function TenderCard({ tender }: { tender: any }) {
+function TenderCard({ tender }: { tender: Tender }) {
     return (
         <Link 
             to={'/tenders/' + tender.id} 
@@ -149,13 +150,13 @@ function TenderCard({ tender }: { tender: any }) {
                     </div>
                     <div>
                         <span className="text-amber-600 text-sm font-bold">{tender.tender_no}</span>
-                        <p className="text-xs text-slate-400">{tender.bids_count || 0} bids</p>
+                        <p className="text-xs text-slate-400">{(tender as any).bids_count || 0} bids</p>
                     </div>
                 </div>
                 <Badge 
                     variant={
                         tender.status === 'awarded' ? 'success' : 
-                        tender.status === 'evaluation' ? 'warning' : 
+                        tender.status === 'evaluating' ? 'warning' : 
                         tender.status === 'closed' ? 'neutral' : 
                         'default'
                     }
@@ -204,7 +205,7 @@ export default function TendersPage() {
     })
     
     const createMut = useMutation({ 
-        mutationFn: (data: any) => api.tenders.create(data), 
+        mutationFn: (data: Partial<Tender>) => api.tenders.create(data), 
         onSuccess: () => { 
             setShowModal(false); 
             setFormData({ title: '', description: '', closing_date: '', estimated_value: '', specifications: '' })
@@ -224,6 +225,11 @@ export default function TendersPage() {
     const paginatedTenders = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
     const totalValue = filtered.reduce((sum: number, t: any) => sum + (t.estimated_value || 0), 0)
 
+    const stats = useMemo(() => [
+        { label: 'Total Tenders', value: filtered.length, icon: Gavel, color: 'from-amber-500 to-orange-500' },
+        { label: 'Active Bidding', value: filtered.filter((t: any) => t.status === 'bidding').length, icon: TrendingUp, color: 'from-emerald-500 to-emerald-600' },
+        { label: 'Total Value', value: `$${totalValue.toLocaleString()}`, icon: DollarSign, color: 'from-violet-500 to-violet-600' },
+    ], [filtered, totalValue])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -246,11 +252,7 @@ export default function TendersPage() {
                 <WelcomeHeader />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[
-                        { label: 'Total Tenders', value: filtered.length, icon: Gavel, color: 'from-amber-500 to-orange-500' },
-                        { label: 'Active Bidding', value: filtered.filter((t: any) => t.status === 'bidding').length, icon: TrendingUp, color: 'from-emerald-500 to-emerald-600' },
-                        { label: 'Total Value', value: `$${totalValue.toLocaleString()}`, icon: DollarSign, color: 'from-violet-500 to-violet-600' },
-                    ].map((stat, i) => (
+                    {stats.map((stat) => (
                         <div 
                             key={stat.label} 
                             className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-slate-100/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
@@ -354,7 +356,7 @@ export default function TendersPage() {
                                                     <Badge 
                                                         variant={
                                                             t.status === 'awarded' ? 'success' : 
-                                                            t.status === 'evaluation' ? 'warning' : 
+                                                            t.status === 'evaluating' ? 'warning' : 
                                                             t.status === 'closed' ? 'neutral' : 
                                                             'default'
                                                         }

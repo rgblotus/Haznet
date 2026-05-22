@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '@/services/api'
@@ -49,7 +49,7 @@ interface CurrentUser {
     last_name: string
 }
 
-function MessageBubble({ message, isOwn }: { message: any; isOwn: boolean }) {
+function MessageBubble({ message, isOwn }: { message: RequisitionMessage; isOwn: boolean }) {
     return (
         <motion.div 
             initial={{ opacity: 0, y: 10 }}
@@ -244,12 +244,12 @@ export default function MessagesPage() {
         },
     })
 
-    const handleSend = () => {
+    const handleSend = useCallback(() => {
         if (!messageText.trim() || !selectedReq || !currentReq || isSending) return
         setIsSending(true)
         const receiverId = me?.id === currentReq.creator_id ? currentReq.current_owner_id : currentReq.creator_id
         sendMutation.mutate({ content: messageText, requisition_id: selectedReq, receiver_id: receiverId || '' })
-    }
+    }, [messageText, selectedReq, currentReq, isSending, me])
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }

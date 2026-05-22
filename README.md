@@ -136,23 +136,61 @@ npm run dev
 Haznet/
 ├── backend/
 │   ├── app/
-│   │   ├── api/          # API routes
-│   │   ├── models/       # SQLAlchemy models
-│   │   ├── schemas/      # Pydantic schemas
-│   │   ├── middleware/   # Custom middleware
+│   │   ├── api/          # API routes (thin, delegate to services)
+│   │   ├── models/       # SQLAlchemy models + enums
+│   │   ├── schemas/      # Pydantic request/response schemas
+│   │   ├── services/     # Business logic layer
+│   │   ├── middleware/   # Auth middleware
 │   │   ├── seed_data/    # Seed data files
-│   │   ├── config.py     # Configuration
-│   │   ├── database.py   # Database setup
+│   │   ├── config.py     # Pydantic Settings
+│   │   ├── database.py   # Async engine + session factory
 │   │   ├── main.py       # FastAPI app entry
 │   │   └── seed.py       # Database seeding
+│   ├── tests/            # pytest tests
 │   ├── .env.example      # Environment template
-│   └── pyproject.toml    # Python dependencies
+│   └── pyproject.toml    # Python deps + tool config
 ├── frontend/
-│   ├── src/              # React source code
+│   ├── src/
+│   │   ├── components/   # Reusable UI components
+│   │   ├── pages/        # Route-level page components
+│   │   ├── services/     # API client
+│   │   ├── stores/       # Zustand stores
+│   │   ├── types/        # TypeScript type definitions
+│   │   └── lib/          # Utilities (cn)
 │   ├── package.json      # Node dependencies
 │   └── vite.config.ts    # Vite configuration
 ├── start.sh              # Start both servers
 └── run.sh                # Start backend only
+```
+
+## Testing
+
+### Backend
+
+```bash
+cd backend
+source .venv/bin/activate
+
+# Run all tests
+SECRET_KEY=test-key pytest
+
+# Run with coverage
+SECRET_KEY=test-key pytest -v --cov=app
+
+# Run specific test file
+SECRET_KEY=test-key pytest tests/test_auth.py -v
+```
+
+### Frontend
+
+```bash
+cd frontend
+
+# TypeScript check
+npx tsc --noEmit
+
+# Build for production
+npm run build
 ```
 
 ## Development
@@ -176,7 +214,7 @@ ruff format .
 cd frontend
 
 # Type check
-npx tsc -b
+npx tsc --noEmit
 
 # Build for production
 npm run build
@@ -187,17 +225,17 @@ npm run preview
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `POSTGRES_USER` | Database user | `postgres` |
-| `POSTGRES_PASSWORD` | Database password | `postgres` |
-| `POSTGRES_HOST` | Database host | `localhost` |
-| `POSTGRES_PORT` | Database port | `5432` |
-| `POSTGRES_DB` | Database name | `neodb` |
-| `SECRET_KEY` | JWT secret key | *(change in production)* |
-| `ALGORITHM` | JWT algorithm | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiry | `480` |
-| `CORS_ORIGINS` | Allowed CORS origins | `["http://localhost:5173"]` |
+| Variable | Description | Default | Notes |
+|----------|-------------|---------|-------|
+| `POSTGRES_USER` | Database user | `postgres` | |
+| `POSTGRES_PASSWORD` | Database password | `postgres` | |
+| `POSTGRES_HOST` | Database host | `localhost` | |
+| `POSTGRES_PORT` | Database port | `5432` | |
+| `POSTGRES_DB` | Database name | `neodb` | |
+| `SECRET_KEY` | JWT secret key | *(required)* | Must be set via `.env` or environment |
+| `ALGORITHM` | JWT algorithm | `HS256` | |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiry | `480` | |
+| `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:5173` | Comma-separated list; parsed automatically |
 
 ## License
 

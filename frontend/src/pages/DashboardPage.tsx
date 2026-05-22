@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import type { DashboardStats, ActivityItem } from '@/types/models'
@@ -38,6 +39,13 @@ export default function DashboardPage() {
   const activeTenders = stats?.active_tenders || 0
   const pendingReceipts = stats?.pending_receipts || 0
   const myPending = stats?.my_pending || 0
+
+  const actions = useMemo(() => [
+    { title: 'New Requisition', icon: Plus, path: '/requisitions', color: 'indigo' },
+    { title: 'View Tenders', icon: TrendingUp, path: '/tenders', color: 'amber' },
+    { title: 'Track Orders', icon: Package, path: '/orders', color: 'emerald' },
+    { title: 'Messages', icon: MessageSquare, path: '/messages', color: 'violet' },
+  ], [])
 
   return (
     <PageLayout>
@@ -201,12 +209,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="p-4">
                 <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { title: 'New Requisition', icon: Plus, path: '/requisitions', color: 'indigo' },
-                    { title: 'View Tenders', icon: TrendingUp, path: '/tenders', color: 'amber' },
-                    { title: 'Track Orders', icon: Package, path: '/orders', color: 'emerald' },
-                    { title: 'Messages', icon: MessageSquare, path: '/messages', color: 'violet' },
-                  ].map((action) => (
+                  {actions.map((action) => (
                     <motion.button
                       key={action.title}
                       onClick={() => navigate(action.path)}

@@ -3,21 +3,25 @@ from typing import Optional, Generic, TypeVar, List
 from datetime import datetime
 from uuid import UUID
 from app.models.enums import (
-    UserRole, RequisitionStatus, TenderStatus, OrderStatus, PostOrderStatus,
-    Designation, Priority, VendorStatus, HODCNPApproval, InventoryCheckStatus,
-    ProcurementMethod, QualityStatus, RequisitionStage, InternalApprovalStatus,
-    TenderEvaluationStage, TenderCancellationReason, OrderStatusExtended,
+    UserRole,
+    RequisitionStatus,
+    TenderStatus,
+    OrderStatus,
+    PostOrderStatus,
+    Designation,
+    Priority,
+    VendorStatus,
+    HODCNPApproval,
+    InventoryCheckStatus,
+    ProcurementMethod,
+    QualityStatus,
+    RequisitionStage,
+    InternalApprovalStatus,
+    TenderEvaluationStage,
+    TenderCancellationReason,
+    OrderStatusExtended,
     DocumentCategory,
 )
-
-__all__ = [
-    "UserRole", "RequisitionStatus", "TenderStatus", "OrderStatus",
-    "PostOrderStatus", "Designation", "Priority", "VendorStatus",
-    "HODCNPApproval", "InventoryCheckStatus", "ProcurementMethod", "QualityStatus",
-    "DocumentCategory",
-    "RequisitionStage", "InternalApprovalStatus", "TenderEvaluationStage",
-    "TenderCancellationReason", "OrderStatusExtended",
-]
 
 T = TypeVar("T")
 
@@ -54,6 +58,7 @@ def create_pagination_meta(total: int, page: int, page_size: int) -> PaginationM
 
 
 # ── Auth ──────────────────────────────────────────────
+
 
 class LoginRequest(BaseModel):
     username: str
@@ -119,6 +124,7 @@ class UserUpdate(BaseModel):
 
 # ── Department ───────────────────────────────────────
 
+
 class DepartmentCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     code: str = Field(..., min_length=1, max_length=20)
@@ -145,6 +151,7 @@ class DepartmentOut(BaseModel):
 
 
 # ── Requisition ──────────────────────────────────────
+
 
 class RequisitionCreate(BaseModel):
     title: str = Field(..., min_length=1)
@@ -243,6 +250,7 @@ class WorkflowAction(BaseModel):
 
 # ── Document ─────────────────────────────────────────
 
+
 class DocumentCreate(BaseModel):
     requisition_id: Optional[UUID] = None
     tender_id: Optional[UUID] = None
@@ -276,6 +284,7 @@ class DocumentOut(BaseModel):
 
 
 # ── Tender ───────────────────────────────────────────
+
 
 class TenderCreate(BaseModel):
     requisition_id: Optional[UUID] = None
@@ -313,6 +322,7 @@ class TenderOut(BaseModel):
 
 # ── Bid ──────────────────────────────────────────────
 
+
 class BidCreate(BaseModel):
     tender_id: UUID
     vendor_id: UUID
@@ -338,6 +348,7 @@ class BidOut(BaseModel):
 
 
 # ── Vendor ───────────────────────────────────────────
+
 
 class VendorCreate(BaseModel):
     name: str = Field(..., min_length=1)
@@ -375,6 +386,7 @@ class VendorOut(BaseModel):
 
 
 # ── Order ────────────────────────────────────────────
+
 
 class OrderCreate(BaseModel):
     requisition_id: Optional[UUID] = None
@@ -429,6 +441,7 @@ class OrderOut(BaseModel):
 
 # ── Post-Order ───────────────────────────────────────
 
+
 class PostOrderCreate(BaseModel):
     order_id: UUID
     requisition_id: Optional[UUID] = None
@@ -464,6 +477,7 @@ class PostOrderOut(BaseModel):
 
 # ── Message ──────────────────────────────────────────
 
+
 class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1)
     receiver_id: Optional[UUID] = None
@@ -483,6 +497,7 @@ class MessageOut(BaseModel):
 
 # ── Dashboard / Stats ────────────────────────────────
 
+
 class DashboardStats(BaseModel):
     total_requisitions: int
     pending_approval: int
@@ -497,6 +512,7 @@ class DashboardStats(BaseModel):
 
 
 # ── Activity Log ─────────────────────────────────────
+
 
 class ActivityItem(BaseModel):
     id: str

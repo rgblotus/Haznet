@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '@/services/api'
@@ -10,11 +10,12 @@ import { EmptyState, TableSkeleton, CardSkeleton } from '@/components/ui/skeleto
 import { FadeIn } from '@/components/ui/AnimatedList'
 import { WelcomeHeader } from '@/components/shared'
 import { motion } from 'framer-motion'
-import { Plus, Search, Building2, Star, CheckCircle, Eye, LayoutGrid, List, ChevronLeft, ChevronRight, Mail, Phone, TrendingUp, Clock, X, Users, Download, RefreshCw, Grid3X3, Zap, FileText } from 'lucide-react'
+import { Plus, Search, Building2, Star, CheckCircle, Eye, LayoutGrid, List, ChevronLeft, ChevronRight, Mail, X, Grid3X3, FileText } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
+import type { Vendor } from '@/types/models'
 
-function VendorCard({ vendor }: { vendor: any }) {
+function VendorCard({ vendor }: { vendor: Vendor }) {
     return (
         <Link 
             to={'/vendors/' + vendor.id} 
@@ -74,7 +75,7 @@ export default function VendorsPage() {
     })
 
     const createMut = useMutation({
-        mutationFn: (data: any) => api.vendors.create(data),
+        mutationFn: (data: Partial<Vendor>) => api.vendors.create(data),
         onSuccess: () => {
             setShowModal(false)
             setFormData({ name: '', contact_person: '', email: '', phone: '', address: '', category: '' })
@@ -88,6 +89,10 @@ export default function VendorsPage() {
     const totalCount = meta?.total || 0
     const activeCount = vendors.filter((v: any) => v.status === 'Active').length
 
+    const stats = useMemo(() => [
+        { label: 'Total Vendors', value: totalCount || 0, icon: Building2, color: 'from-emerald-500 to-emerald-600' },
+        { label: 'Active Vendors', value: activeCount, icon: CheckCircle, color: 'from-indigo-500 to-indigo-600' },
+    ], [totalCount, activeCount])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -199,32 +204,22 @@ export default function VendorsPage() {
 
                 <FadeIn delay={0.1}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div 
-                        className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-slate-100/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                                <Building2 size={22} className="text-white" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-extrabold text-slate-700">{totalCount || 0}</p>
-                                <p className="text-sm text-slate-500">Total Vendors</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div 
-                        className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-slate-100/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                                <CheckCircle size={22} className="text-white" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-extrabold text-slate-700">{activeCount}</p>
-                                <p className="text-sm text-slate-500">Active Vendors</p>
+                    {stats.map((stat) => (
+                        <div 
+                            key={stat.label}
+                            className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-slate-100/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                                    <stat.icon size={22} className="text-white" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-extrabold text-slate-700">{stat.value}</p>
+                                    <p className="text-sm text-slate-500">{stat.label}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ))}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">

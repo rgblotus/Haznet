@@ -37,12 +37,15 @@ def run_migrations():
         from alembic.config import Config
         from alembic import command
         import os
-        
-        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+
+        alembic_cfg = Config(
+            os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+        )
         command.upgrade(alembic_cfg, "head")
         logger.info("Database migrations applied successfully")
     except Exception as e:
         logger.warning(f"Migration check: {e}")
+
 
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
@@ -55,19 +58,19 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
-        
+
         start_time = time.time()
-        
+
         logger.info(
             f"Request started | ID: {request_id} | "
             f"Method: {request.method} | "
             f"Path: {request.url.path} | "
             f"Client: {request.client.host if request.client else 'unknown'}"
         )
-        
+
         try:
             response = await call_next(request)
-            
+
             duration = time.time() - start_time
             logger.info(
                 f"Request completed | ID: {request_id} | "
@@ -76,10 +79,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 f"Status: {response.status_code} | "
                 f"Duration: {duration:.3f}s"
             )
-            
+
             response.headers["X-Request-ID"] = request_id
             return response
-            
+
         except Exception as exc:
             duration = time.time() - start_time
             logger.error(
@@ -94,20 +97,21 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info(f"{"="*50}")
+    logger.info(f"{'=' * 50}")
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Environment: {'Development' if settings.debug else 'Production'}")
-    logger.info(f"{"="*50}")
-    
+    logger.info(f"{'=' * 50}")
+
     try:
-        # Don't run migrations in production, just init db
+        if settings.debug:
+            run_migrations()
         await init_db()
         logger.info("Database connection established")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
-    
+
     yield
-    
+
     logger.info("Shutting down...")
     await close_db()
     logger.info("Database connections closed")
@@ -142,12 +146,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     errors = []
     for error in exc.errors():
         field = ".".join(str(loc) for loc in error["loc"][1:] if isinstance(loc, str))
-        errors.append({
-            "field": field or "body",
-            "message": error["msg"],
-            "type": error["type"],
-        })
-    
+        errors.append(
+            {
+                "field": field or "body",
+                "message": error["msg"],
+                "type": error["type"],
+            }
+        )
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
@@ -193,10 +199,10 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-
-
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
-app.include_router(requisitions.router, prefix="/api/requisitions", tags=["Requisitions"])
+app.include_router(
+    requisitions.router, prefix="/api/requisitions", tags=["Requisitions"]
+)
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(tenders.router, prefix="/api/tenders", tags=["Tenders"])
 app.include_router(vendors.router, prefix="/api/vendors", tags=["Vendors"])
@@ -222,6 +228,7 @@ async def health_check():
 @app.get("/api/health/db")
 async def db_health_check():
     from app.database import check_db_health
+
     is_healthy = await check_db_health()
     return {
         "status": "healthy" if is_healthy else "unhealthy",

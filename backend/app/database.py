@@ -1,6 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
 
 from app.config import get_settings
 
@@ -30,6 +29,7 @@ class Base(DeclarativeBase):
 def get_sync_engine():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
     engine = create_engine(
         settings.sync_database_url,
         echo=settings.debug,
@@ -58,6 +58,7 @@ async def close_db():
 async def check_db_health() -> bool:
     try:
         from sqlalchemy import text
+
         async with async_engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
             return True

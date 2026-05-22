@@ -1,20 +1,22 @@
-import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useMemo, useCallback } from 'react'
+import { useQuery, useQueryClient, skipToken } from '@tanstack/react-query'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import PageLayout from '@/components/PageLayout'
-import { Button, Badge } from '@/components/ui'
+import { Button, Badge, toast } from '@/components/ui'
 import { FadeIn } from '@/components/ui/AnimatedList'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useAuthStore, canEditRequisition, canSubmitRequisition, canReviewRequisition, canReturnRequisition, canAssignToProcurement, canProcessRequisition, canCompleteRequisition } from '@/stores/authStore'
 import type { ActivityLog } from '@/types/models'
+import type { IconType } from '@/types/common'
 import DocumentsSection from '@/components/shared/DocumentsSection'
 import {
-  ArrowLeft, FileText, Clock, CheckCircle, AlertCircle, User, Send,
-  MessageSquare, Edit, Package, DollarSign, Calendar,
+  ArrowLeft, FileText, Clock, CheckCircle, Send,
+  Edit, Package, DollarSign, Calendar,
   RotateCcw, Forward, Shield, Trash2, Award, ClipboardList,
-  Activity, History, ChevronDown, Building2, Hash, FileCheck,
-  GitBranch, Layers, Paperclip, Settings, Info, Zap
+  History, Building2, FileCheck,
+  GitBranch, Paperclip, Settings, Info, Zap
 } from 'lucide-react'
 
 const statusBadgeColors: Record<string, string> = {
@@ -57,7 +59,7 @@ function formatDateTime(dateStr: string | null | undefined): string {
   return new Date(dateStr).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function InfoBadge({ icon: Icon, label, value, color = 'indigo' }: { icon: any; label: string; value: string | number | null | undefined; color?: string }) {
+function InfoBadge({ icon: Icon, label, value, color = 'indigo' }: { icon: IconType; label: string; value: string | number | null | undefined; color?: string }) {
   const colors: Record<string, { bg: string; border: string; icon: string; text: string }> = {
     indigo: { bg: 'from-indigo-50 to-violet-50', border: 'border-indigo-100', icon: 'text-indigo-500', text: 'text-indigo-700' },
     emerald: { bg: 'from-emerald-50 to-emerald-100', border: 'border-emerald-100', icon: 'text-emerald-500', text: 'text-emerald-700' },
@@ -80,7 +82,7 @@ function InfoBadge({ icon: Icon, label, value, color = 'indigo' }: { icon: any; 
   )
 }
 
-function TabButton({ active, onClick, icon: Icon, label, count }: { active: boolean; onClick: () => void; icon: any; label: string; count?: number }) {
+function TabButton({ active, onClick, icon: Icon, label, count }: { active: boolean; onClick: () => void; icon: IconType; label: string; count?: number }) {
   return (
     <button
       onClick={onClick}
@@ -103,7 +105,7 @@ function TabButton({ active, onClick, icon: Icon, label, count }: { active: bool
   )
 }
 
-function StatusStep({ label, status, icon: Icon, isActive, isPast }: { label: string; status: string; icon: any; isActive?: boolean; isPast?: boolean }) {
+function StatusStep({ label, status, icon: Icon, isActive, isPast }: { label: string; status: string; icon: IconType; isActive?: boolean; isPast?: boolean }) {
   const statusStyles = {
     completed: 'bg-emerald-500 text-white',
     current: 'bg-amber-500 text-white animate-pulse',
@@ -124,12 +126,8 @@ function StatusStep({ label, status, icon: Icon, isActive, isPast }: { label: st
 }
 
 export default function RequisitionDetailPage() {
+  const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [req, setReq] = useState<any | null>(null)
-  const [tender, setTender] = useState<any | null>(null)
-  const [bids, setBids] = useState<any[]>([])
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
-  const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showReturnModal, setShowReturnModal] = useState(false)
   const [returnReason, setReturnReason] = useState('')
@@ -137,53 +135,65 @@ export default function RequisitionDetailPage() {
 
   const user = useAuthStore((s) => s.user)
   const role = user?.role || 'indentor'
+
+  const queryClient = useQueryClient()
+
+  const { data: req, isLoading } = useQuery({
+    queryKey: ['requisition', id],
+    queryFn: () => api.requisitions.get(id!),
+    enabled: !!id,
+  })
+
+  const tenderId = req?.tender_id
+  const { data: tender } = useQuery({
+    queryKey: ['requisition-tender', id, tenderId],
+    queryFn: () => api.tenders.get(tenderId!),
+    enabled: !!tenderId,
+  })
+
+  const bidTenderId = tender?.id
+  const { data: bids = [] } = useQuery({
+    queryKey: ['requisition-bids', bidTenderId],
+    queryFn: () => api.tenders.getBids(bidTenderId!),
+    enabled: !!bidTenderId,
+  })
+
+  const { data: activityLogs = [] } = useQuery({
+    queryKey: ['requisition-logs', id],
+    queryFn: () => api.requisitions.getActivity(id!),
+    enabled: !!id,
+  })
+
   const isCreator = req?.creator_id === user?.id
 
-  useEffect(() => {
-    if (!id) return
-    setLoading(true)
-    api.requisitions.get(id)
-      .then((data) => {
-        setReq(data)
-        if (data.tender_id) {
-          api.tenders.get(data.tender_id).then(setTender).catch(() => {})
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [id])
+  const tabs = useMemo(() => [
+    { id: 'overview', label: 'Overview', icon: Info },
+    { id: 'workflow', label: 'Workflow', icon: GitBranch },
+    { id: 'documents', label: 'Documents', icon: Paperclip },
+    { id: 'activity', label: 'Activity', icon: History, count: activityLogs.length },
+  ], [activityLogs.length])
 
-  useEffect(() => {
-    if (!id) return
-    api.requisitions.getActivity(id).then(setActivityLogs).catch(console.error)
-  }, [id, req?.status])
-
-  useEffect(() => {
-    if (tender?.id) api.tenders.getBids(tender.id).then(setBids).catch(() => {})
-  }, [tender?.id])
-
-  const handleAction = async (action: string) => {
+  const handleAction = useCallback(async (action: string) => {
     if (!id) return
     setActionLoading(action)
     try {
-      let res
       switch (action) {
-        case 'submit': res = await api.requisitions.submit(id); break
-        case 'review': res = await api.requisitions.review(id, { reason: returnReason || undefined }); break
-        case 'return': res = await api.requisitions.returnReq(id, { reason: returnReason || 'Returned for clarification' }); break
-        case 'assign': res = await api.requisitions.assignToProcurement(id); break
-        case 'process': res = await api.requisitions.process(id); break
-        case 'complete': res = await api.requisitions.complete(id); break
-        case 'delete': res = await api.requisitions.delete(id); window.location.href = '/requisitions'; return
+        case 'submit': await api.requisitions.submit(id); break
+        case 'review': await api.requisitions.review(id, { reason: returnReason || undefined }); break
+        case 'return': await api.requisitions.returnReq(id, { reason: returnReason || 'Returned for clarification' }); break
+        case 'assign': await api.requisitions.assignToProcurement(id); break
+        case 'process': await api.requisitions.process(id); break
+        case 'complete': await api.requisitions.complete(id); break
+        case 'delete': await api.requisitions.delete(id); navigate('/requisitions'); return
       }
-      if (res) setReq(res)
+      queryClient.invalidateQueries({ queryKey: ['requisition', id] })
       setShowReturnModal(false)
       setReturnReason('')
-    } catch (err: any) { console.error(err); alert(err.message || 'Action failed') }
+    } catch (err) { const msg = err instanceof Error ? err.message : 'Action failed'; console.error(err); toast({ type: 'error', title: msg }) }
     finally { setActionLoading(null) }
-  }
+  }, [id, navigate, returnReason, queryClient])
 
-  if (loading) {
+  if (isLoading) {
     return <PageLayout title="Loading"><div className="flex items-center justify-center h-[60vh]"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div></PageLayout>
   }
   if (!req) return <PageLayout title="Not Found"><div className="text-center py-20 text-slate-400">Requisition not found</div></PageLayout>
@@ -195,13 +205,6 @@ export default function RequisitionDetailPage() {
   const canAssign = canAssignToProcurement(role) && ['submitted', 'under_review'].includes(req.status)
   const canProcess = canProcessRequisition(role) && ['processing', 'under_review'].includes(req.status)
   const canComplete = canCompleteRequisition(role) && ['order_created', 'receiving', 'inspection_pending'].includes(req.status)
-
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: Info },
-    { id: 'workflow', label: 'Workflow', icon: GitBranch },
-    { id: 'documents', label: 'Documents', icon: Paperclip },
-    { id: 'activity', label: 'Activity', icon: History, count: activityLogs.length },
-  ]
 
   const workflowSteps = [
     { label: 'Requisition Created', status: 'completed', icon: FileText },
@@ -283,14 +286,12 @@ export default function RequisitionDetailPage() {
         </div>
 
         {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
             {activeTab === 'overview' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
@@ -443,8 +444,7 @@ export default function RequisitionDetailPage() {
                 )}
               </div>
             )}
-          </motion.div>
-        </AnimatePresence>
+        </motion.div>
       </div>
 
       {/* Return Modal */}
@@ -465,7 +465,7 @@ export default function RequisitionDetailPage() {
   )
 }
 
-function ActionButton({ icon: Icon, label, color, onClick, loading }: { icon: any; label: string; color: string; onClick: () => void; loading?: boolean }) {
+function ActionButton({ icon: Icon, label, color, onClick, loading }: { icon: IconType; label: string; color: string; onClick: () => void; loading?: boolean }) {
   const colors: Record<string, string> = {
     indigo: 'from-indigo-50 to-violet-50 text-indigo-700 border-indigo-200 hover:border-indigo-300',
     emerald: 'from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200 hover:border-emerald-300',
@@ -483,7 +483,7 @@ function ActionButton({ icon: Icon, label, color, onClick, loading }: { icon: an
   )
 }
 
-function LinkButton({ icon: Icon, label, to }: { icon: any; label: string; to: string }) {
+function LinkButton({ icon: Icon, label, to }: { icon: IconType; label: string; to: string }) {
   return (
     <Link to={to} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border from-cyan-50 to-cyan-100 text-cyan-700 border-cyan-200 hover:border-cyan-300 transition-all hover:shadow-md">
       <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-cyan-500"><Icon size={14} className="text-white" /></div>

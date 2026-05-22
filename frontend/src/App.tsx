@@ -1,10 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { Component, useState, useEffect, lazy, Suspense } from 'react'
+import type { ReactNode, ErrorInfo } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from './stores/authStore'
 import { ToastContainer } from './components/ui/toast'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Hexagon } from 'lucide-react'
+import { PageLoader } from '@/components/PageLoader'
+import { PageErrorBoundary } from '@/components/PageErrorBoundary'
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -23,6 +26,29 @@ const VendorDetailPage = lazy(() => import('./pages/VendorDetailPage'))
 const DepartmentPage = lazy(() => import('./pages/DepartmentPage'))
 
 import { LoginModal } from './components/LoginModal'
+
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('Route error:', error, info) }
+  render() {
+    if (this.state.error) {
+      return (
+        <motion.div className="min-h-[400px] flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="text-center p-8">
+            <p className="text-lg font-semibold text-slate-800 mb-2">Something went wrong</p>
+            <p className="text-sm text-slate-500 mb-4">{this.state.error.message}</p>
+            <button onClick={() => { this.setState({ error: null }); window.location.href = '/dashboard' }}
+              className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors">
+              Go to Dashboard
+            </button>
+          </div>
+        </motion.div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,43 +121,27 @@ function AppShell() {
 
 function AnimatedRoutes() {
   const location = useLocation()
+  const wrap = (el: ReactNode) => <RouteErrorBoundary>{el}</RouteErrorBoundary>
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<AppShell />} />
-        <Route path="/dashboard" element={<AuthGuard><Suspense fallback={<PageLoader />}><DashboardPage /></Suspense></AuthGuard>} />
-        <Route path="/requisitions" element={<AuthGuard><Suspense fallback={<PageLoader />}><RequisitionsPage /></Suspense></AuthGuard>} />
-        <Route path="/requisitions/:id" element={<AuthGuard><Suspense fallback={<PageLoader />}><RequisitionDetailPage /></Suspense></AuthGuard>} />
-        <Route path="/tenders" element={<AuthGuard><Suspense fallback={<PageLoader />}><TendersPage /></Suspense></AuthGuard>} />
-        <Route path="/tenders/:id" element={<AuthGuard><Suspense fallback={<PageLoader />}><TenderDetailPage /></Suspense></AuthGuard>} />
-        <Route path="/vendors" element={<AuthGuard><Suspense fallback={<PageLoader />}><VendorsPage /></Suspense></AuthGuard>} />
-        <Route path="/vendors/:id" element={<AuthGuard><Suspense fallback={<PageLoader />}><VendorDetailPage /></Suspense></AuthGuard>} />
-        <Route path="/orders" element={<AuthGuard><Suspense fallback={<PageLoader />}><OrdersPage /></Suspense></AuthGuard>} />
-        <Route path="/orders/:id" element={<AuthGuard><Suspense fallback={<PageLoader />}><OrderDetailPage /></Suspense></AuthGuard>} />
-        <Route path="/receiving" element={<AuthGuard><Suspense fallback={<PageLoader />}><ReceivingPage /></Suspense></AuthGuard>} />
-        <Route path="/messages" element={<AuthGuard><Suspense fallback={<PageLoader />}><MessagesPage /></Suspense></AuthGuard>} />
-        <Route path="/messages/:reqId" element={<AuthGuard><Suspense fallback={<PageLoader />}><MessagesPage /></Suspense></AuthGuard>} />
-        <Route path="/department" element={<AuthGuard><Suspense fallback={<PageLoader />}><DepartmentPage /></Suspense></AuthGuard>} />
-        <Route path="/admin/users" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><AdminUsersPage /></Suspense></ProtectedRoute>} />
-        <Route path="/profile" element={<AuthGuard><Suspense fallback={<PageLoader />}><ProfilePage /></Suspense></AuthGuard>} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </AnimatePresence>
-  )
-}
-
-function PageLoader() {
-  return (
-    <motion.div 
-      className="min-h-[400px] flex items-center justify-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-    >
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-slate-500">Loading...</p>
-      </div>
-    </motion.div>
+    <Routes location={location} key={location.pathname}>
+      <Route path="/" element={wrap(<AppShell />)} />
+      <Route path="/dashboard" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Dashboard"><DashboardPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/requisitions" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Requisitions"><RequisitionsPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/requisitions/:id" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="RequisitionDetail"><RequisitionDetailPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/tenders" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Tenders"><TendersPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/tenders/:id" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="TenderDetail"><TenderDetailPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/vendors" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Vendors"><VendorsPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/vendors/:id" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="VendorDetail"><VendorDetailPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/orders" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Orders"><OrdersPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/orders/:id" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="OrderDetail"><OrderDetailPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/receiving" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Receiving"><ReceivingPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/messages" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Messages"><MessagesPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/messages/:reqId" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Messages"><MessagesPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/department" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Department"><DepartmentPage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="/admin/users" element={wrap(<ProtectedRoute><Suspense fallback={<PageLoader />}><PageErrorBoundary name="AdminUsers"><AdminUsersPage /></PageErrorBoundary></Suspense></ProtectedRoute>)} />
+      <Route path="/profile" element={wrap(<AuthGuard><Suspense fallback={<PageLoader />}><PageErrorBoundary name="Profile"><ProfilePage /></PageErrorBoundary></Suspense></AuthGuard>)} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   )
 }
 

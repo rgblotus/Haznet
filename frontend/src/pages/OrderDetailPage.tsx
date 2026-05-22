@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import PageLayout from '@/components/PageLayout'
@@ -18,20 +18,15 @@ const statusFlow = [
 
 export default function OrderDetailPage() {
     const { id } = useParams<{ id: string }>()
-    const [order, setOrder] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        if (!id) return
-        api.orders.get(id)
-            .then(setOrder)
-            .catch(console.error)
-            .finally(() => setLoading(false))
-    }, [id])
+    const { data: order, isLoading } = useQuery({
+        queryKey: ['order', id],
+        queryFn: () => api.orders.get(id!),
+        enabled: !!id,
+    })
 
     const currentStatusIndex = statusFlow.findIndex(s => s.key === order?.status)
 
-    if (loading) {
+    if (isLoading) {
         return <PageLayout title="Order Details"><div className="flex items-center justify-center h-[60vh] skeleton text-slate-400">Loading...</div></PageLayout>
     }
 
@@ -168,8 +163,8 @@ export default function OrderDetailPage() {
                                         <td className="p-3 text-sm text-slate-500">{order.quantity}</td>
                                         <td className="p-3 text-sm text-slate-500">{order.received_quantity || 0}</td>
                                         <td className="p-3 text-right">
-                                            <Badge variant={order.received_quantity >= order.quantity ? 'success' : 'warning'}>
-                                                {order.received_quantity >= order.quantity ? 'Complete' : 'Partial'}
+                                            <Badge variant={(order.received_quantity ?? 0) >= order.quantity ? 'success' : 'warning'}>
+                                                {(order.received_quantity ?? 0) >= order.quantity ? 'Complete' : 'Partial'}
                                             </Badge>
                                         </td>
                                     </motion.tr>

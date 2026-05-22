@@ -35,13 +35,22 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
+def _get_secret_key() -> str:
+    key = settings.secret_key
+    if not key:
+        raise RuntimeError(
+            "SECRET_KEY is not configured. Set it in your .env file or environment."
+        )
+    return key
+
+
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
     to_encode["exp"] = expire
-    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    return jwt.encode(to_encode, _get_secret_key(), algorithm=settings.algorithm)
 
 
 async def get_current_user(
@@ -54,21 +63,27 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(
+            token, _get_secret_key(), algorithms=[settings.algorithm]
+        )
         user_id: str | None = payload.get("sub")
         if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    result = await db.execute(select(User).options(selectinload(User.department)).where(User.id == user_id))
+    result = await db.execute(
+        select(User).options(selectinload(User.department)).where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
-    
+
     if user is None:
         raise credentials_exception
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
-    
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled"
+        )
+
     return user
 
 
@@ -80,4 +95,5 @@ def require_role(*allowed_roles):
                 detail="Insufficient permissions",
             )
         return current_user
+
     return role_checker

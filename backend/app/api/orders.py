@@ -5,10 +5,22 @@ from uuid import UUID
 
 from app.database import get_db
 from app.middleware.auth import get_current_user, require_role
-from app.models import User, Order, Requisition, RequisitionStatus, PostOrder, PostOrderStatus, UserRole, OrderStatus
+from app.models import (
+    User,
+    Order,
+    Requisition,
+    RequisitionStatus,
+    PostOrder,
+    PostOrderStatus,
+    UserRole,
+    OrderStatus,
+)
 from app.schemas import (
-    OrderCreate, OrderUpdate, OrderOut,
-    PaginatedResponse, create_pagination_meta,
+    OrderCreate,
+    OrderUpdate,
+    OrderOut,
+    PaginatedResponse,
+    create_pagination_meta,
 )
 
 router = APIRouter()
@@ -31,6 +43,10 @@ async def list_orders(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """List orders with optional filtering and pagination.
+
+    Returns paginated orders filtered by status or search term.
+    """
     query = select(Order)
     count_query = select(func.count(Order.id))
 
@@ -49,7 +65,11 @@ async def list_orders(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    query = query.order_by(Order.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    query = (
+        query.order_by(Order.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     result = await db.execute(query)
     orders = result.scalars().all()
 
@@ -64,6 +84,10 @@ async def get_order(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
+    """Get a single order by ID.
+
+    Returns the order details.
+    """
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
     if not order:
@@ -74,13 +98,22 @@ async def get_order(
 @router.post("", response_model=OrderOut, status_code=201)
 async def create_order(
     body: OrderCreate,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a new purchase order.
+
+    Returns the created order with generated order number.
+    """
     order_no = await _gen_order_no(db)
 
     order_data = body.model_dump()
-    if order_data.get("total_amount") is None and order_data.get("unit_price") is not None:
+    if (
+        order_data.get("total_amount") is None
+        and order_data.get("unit_price") is not None
+    ):
         order_data["total_amount"] = order_data["unit_price"] * body.quantity
 
     order = Order(**order_data, order_no=order_no)
@@ -89,7 +122,9 @@ async def create_order(
     await db.refresh(order)
 
     if body.requisition_id:
-        result = await db.execute(select(Requisition).where(Requisition.id == body.requisition_id))
+        result = await db.execute(
+            select(Requisition).where(Requisition.id == body.requisition_id)
+        )
         req = result.scalar_one_or_none()
         if req:
             req.status = RequisitionStatus.ORDER_CREATED
@@ -105,6 +140,10 @@ async def update_order(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Update an existing order.
+
+    Returns the updated order.
+    """
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
     if not order:
@@ -121,9 +160,15 @@ async def update_order(
 @router.post("/{order_id}/issue", response_model=OrderOut)
 async def issue_order(
     order_id: UUID,
-    current_user: User = Depends(require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD)),
+    current_user: User = Depends(
+        require_role(UserRole.PROCUREMENT_OFFICER, UserRole.CNP_HOD)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Issue an order and create a pending post-order record.
+
+    Returns the order with issued status.
+    """
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalar_one_or_none()
     if not order:

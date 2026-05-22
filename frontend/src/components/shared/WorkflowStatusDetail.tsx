@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { api } from '@/services/api'
+import type { IconType } from '@/types/common'
+import type { WorkflowStatus } from '@/types/models'
 import {
   Shield, ClipboardList, Users, FileCheck, DollarSign, AlertTriangle,
   CheckCircle, XCircle, Clock, ChevronDown, ChevronRight, MessageSquare,
@@ -15,7 +17,7 @@ interface WorkflowStatusDetailProps {
   role: string
 }
 
-const phaseIcons: Record<string, any> = {
+const phaseIcons: Record<string, IconType> = {
   checklist: FileCheck,
   clarification: MessageSquare,
   tender_committee: UsersRound,
@@ -42,14 +44,14 @@ const phaseIcons: Record<string, any> = {
   execution: Briefcase,
 }
 
-function Calendar({ className }: { className?: string }) {
-  return <Clock className={className} />
+function Calendar({ className, size }: { className?: string; size?: number }) {
+  return <Clock className={className} size={size} />
 }
 
 interface PhaseStepProps {
   label: string
   status: 'completed' | 'current' | 'pending'
-  icon?: any
+  icon?: IconType
   notes?: string
   date?: string
   onClick?: () => void
@@ -100,7 +102,7 @@ function PhaseStep({ label, status, icon: Icon, notes, date, onClick }: PhaseSte
 }
 
 export default function WorkflowStatusDetail({ requisitionId, status, tenderStatus, role }: WorkflowStatusDetailProps) {
-  const [workflowStatus, setWorkflowStatus] = useState<any>(null)
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedPhase, setExpandedPhase] = useState<string | null>('internal_approval')
   

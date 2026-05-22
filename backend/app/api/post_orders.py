@@ -6,7 +6,14 @@ from datetime import datetime, timezone
 
 from app.database import get_db
 from app.middleware.auth import get_current_user, require_role
-from app.models import User, PostOrder, Requisition, RequisitionStatus, UserRole, PostOrderStatus
+from app.models import (
+    User,
+    PostOrder,
+    Requisition,
+    RequisitionStatus,
+    UserRole,
+    PostOrderStatus,
+)
 from app.schemas import PostOrderCreate, PostOrderUpdate, PostOrderOut
 
 router = APIRouter()
@@ -17,12 +24,20 @@ async def list_post_orders(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """List all post-order records.
+
+    Returns a list of post-order records ordered by creation date.
+    """
     result = await db.execute(select(PostOrder).order_by(PostOrder.created_at.desc()))
     return result.scalars().all()
 
 
 @router.get("/{po_id}", response_model=PostOrderOut)
 async def get_post_order(po_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Get a single post-order record by ID.
+
+    Returns the post-order details.
+    """
     result = await db.execute(select(PostOrder).where(PostOrder.id == po_id))
     po = result.scalar_one_or_none()
     if not po:
@@ -36,6 +51,10 @@ async def create_post_order(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a new post-order record.
+
+    Returns the created post-order record.
+    """
     po = PostOrder(**body.model_dump())
     db.add(po)
     await db.commit()
@@ -45,10 +64,15 @@ async def create_post_order(
 
 @router.patch("/{po_id}", response_model=PostOrderOut)
 async def update_post_order(
-    po_id: UUID, body: PostOrderUpdate,
+    po_id: UUID,
+    body: PostOrderUpdate,
     current_user: User = Depends(require_role(UserRole.INVENTORY_MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Update a post-order record and optionally mark requisition as completed.
+
+    Returns the updated post-order record.
+    """
     result = await db.execute(select(PostOrder).where(PostOrder.id == po_id))
     po = result.scalar_one_or_none()
     if not po:
@@ -58,7 +82,9 @@ async def update_post_order(
         setattr(po, k, v)
 
     if body.status == PostOrderStatus.COMPLETED and po.requisition_id:
-        req_result = await db.execute(select(Requisition).where(Requisition.id == po.requisition_id))
+        req_result = await db.execute(
+            select(Requisition).where(Requisition.id == po.requisition_id)
+        )
         req = req_result.scalar_one_or_none()
         if req and req.status != RequisitionStatus.COMPLETED:
             req.status = RequisitionStatus.COMPLETED
@@ -70,10 +96,15 @@ async def update_post_order(
 
 @router.post("/{po_id}/receive")
 async def receive_goods(
-    po_id: UUID, received_by: UUID,
+    po_id: UUID,
+    received_by: UUID,
     current_user: User = Depends(require_role(UserRole.INVENTORY_MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Mark goods as received for a post-order record.
+
+    Returns a success confirmation message.
+    """
     result = await db.execute(select(PostOrder).where(PostOrder.id == po_id))
     po = result.scalar_one_or_none()
     if not po:

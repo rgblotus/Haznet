@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '@/services/api'
@@ -10,9 +10,10 @@ import { EmptyState, TableSkeleton, CardSkeleton } from '@/components/ui/skeleto
 import { FadeIn } from '@/components/ui/AnimatedList'
 import { WelcomeHeader } from '@/components/shared'
 import { motion } from 'framer-motion'
-import { Plus, Package, Clock, CheckCircle, Truck, FileText, DollarSign, Eye, LayoutGrid, List, Search, X, ArrowRight, Zap, FileCheck, ClipboardList, Download, RefreshCw, Grid3X3, Filter } from 'lucide-react'
+import { Plus, Package, Clock, Truck, DollarSign, Eye, LayoutGrid, List, Search, X, ArrowRight, FileCheck, Grid3X3 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
+import type { Order } from '@/types/models'
 
 const statusBadgeColors: Record<string, string> = {
     draft: 'neutral',
@@ -134,7 +135,7 @@ function RightSidebar({ onStatusFilter, currentStatus, viewMode, onViewModeChang
     )
 }
 
-function OrderCard({ order }: { order: any }) {
+function OrderCard({ order }: { order: Order }) {
     return (
         <Link 
             to={'/orders/' + order.id} 
@@ -187,7 +188,7 @@ export default function OrdersPage() {
     const { data: vendorsResponse } = useQuery({ queryKey: ['vendors-list'], queryFn: () => api.vendors.list({ page_size: 100 }).then(r => r.data) })
     
     const createMut = useMutation({ 
-        mutationFn: (data: any) => api.orders.create(data), 
+        mutationFn: (data: Partial<Order>) => api.orders.create(data), 
         onSuccess: () => { 
             setShowModal(false); 
             setFormData({ title: '', vendor_id: '', delivery_date: '', notes: '' })
@@ -213,6 +214,12 @@ export default function OrdersPage() {
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
     const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
+    const stats = useMemo(() => [
+        { label: 'Total Orders', value: filteredOrders.length || 0, icon: Package, color: 'from-rose-500 to-rose-600' },
+        { label: 'Pending', value: pendingCount, icon: Clock, color: 'from-amber-500 to-amber-600' },
+        { label: 'In Transit', value: inTransitCount, icon: Truck, color: 'from-violet-500 to-violet-600' },
+        { label: 'Total Value', value: `$${totalValue.toLocaleString()}`, icon: DollarSign, color: 'from-emerald-500 to-emerald-600' },
+    ], [filteredOrders])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -235,12 +242,7 @@ export default function OrdersPage() {
 
                 <FadeIn delay={0.1}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                        { label: 'Total Orders', value: filteredOrders.length || 0, icon: Package, color: 'from-rose-500 to-rose-600' },
-                        { label: 'Pending', value: pendingCount, icon: Clock, color: 'from-amber-500 to-amber-600' },
-                        { label: 'In Transit', value: inTransitCount, icon: Truck, color: 'from-violet-500 to-violet-600' },
-                        { label: 'Total Value', value: `$${totalValue.toLocaleString()}`, icon: DollarSign, color: 'from-emerald-500 to-emerald-600' },
-                    ].map((stat, i) => (
+                    {stats.map((stat) => (
                         <div 
                             key={stat.label} 
                             className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-slate-100/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"

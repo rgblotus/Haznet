@@ -7,8 +7,11 @@ from app.database import get_db
 from app.middleware.auth import get_current_user, require_role
 from app.models import User, Vendor, UserRole
 from app.schemas import (
-    VendorCreate, VendorUpdate, VendorOut,
-    PaginatedResponse, create_pagination_meta,
+    VendorCreate,
+    VendorUpdate,
+    VendorOut,
+    PaginatedResponse,
+    create_pagination_meta,
 )
 
 router = APIRouter()
@@ -24,6 +27,10 @@ async def list_vendors(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """List vendors with optional filtering and pagination.
+
+    Returns paginated vendors filtered by search, status, or category.
+    """
     query = select(Vendor)
     count_query = select(func.count(Vendor.id))
 
@@ -60,9 +67,15 @@ async def list_vendors(
 @router.post("", response_model=VendorOut, status_code=201)
 async def create_vendor(
     body: VendorCreate,
-    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.CNP_HOD, UserRole.PROCUREMENT_OFFICER)),
+    current_user: User = Depends(
+        require_role(UserRole.ADMIN, UserRole.CNP_HOD, UserRole.PROCUREMENT_OFFICER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a new vendor.
+
+    Returns the created vendor with Active status.
+    """
     vendor = Vendor(**body.model_dump(), status="Active")
     db.add(vendor)
     await db.commit()
@@ -75,6 +88,10 @@ async def get_vendor(
     vendor_id: UUID,
     db: AsyncSession = Depends(get_db),
 ):
+    """Get a single vendor by ID.
+
+    Returns the vendor details.
+    """
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
@@ -89,6 +106,10 @@ async def update_vendor(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.CNP_HOD)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Update a vendor's details.
+
+    Returns the updated vendor.
+    """
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
@@ -108,6 +129,10 @@ async def delete_vendor(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Deactivate a vendor (soft delete).
+
+    Returns a success confirmation message.
+    """
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:

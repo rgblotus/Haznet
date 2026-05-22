@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import PageLayout from '@/components/PageLayout'
@@ -8,9 +8,10 @@ import { EmptyState, TableSkeleton } from '@/components/ui/skeleton'
 import { FadeIn, AnimatedList, AnimatedItem } from '@/components/ui/AnimatedList'
 import { WelcomeHeader } from '@/components/shared'
 import { motion } from 'framer-motion'
-import { Plus, Package, Truck, Clock, Eye, LayoutGrid, List, Search, CheckCircle, AlertCircle, X, ChevronRight, ChevronLeft, ClipboardCheck, XCircle, Scale, QrCode, ShieldCheck, Check, RefreshCw, Download, Zap, Gauge } from 'lucide-react'
+import { Package, Truck, Clock, Eye, CheckCircle, ChevronRight, ChevronLeft, ClipboardCheck, XCircle, QrCode, Check } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
+import type { PostOrder } from '@/types/models'
 
 function RightSidebar({ pendingCount, passedCount, failedCount }: { pendingCount: number; passedCount: number; failedCount: number }) {
     return (
@@ -83,10 +84,10 @@ function RightSidebar({ pendingCount, passedCount, failedCount }: { pendingCount
     )
 }
 
-function ReceivingCard({ postOrder, onInspect }: { postOrder: any; onInspect: (id: number) => void }) {
-    const qualityBg = postOrder.quality_status === 'passed' 
+function ReceivingCard({ postOrder, onInspect }: { postOrder: PostOrder; onInspect: (id: string) => void }) {
+    const qualityBg = (postOrder.quality_status as string) === 'passed' 
         ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
-        : postOrder.quality_status === 'failed' 
+        : (postOrder.quality_status as string) === 'failed' 
         ? 'bg-red-50 text-red-600 border border-red-200' 
         : 'bg-amber-50 text-amber-600 border border-amber-200'
     
@@ -109,8 +110,8 @@ function ReceivingCard({ postOrder, onInspect }: { postOrder: any; onInspect: (i
                         <Truck size={18} className="text-cyan-500" />
                     </div>
                     <div>
-                        <span className="text-cyan-600 text-sm font-bold">{postOrder.order?.order_no || '-'}</span>
-                        <p className="text-xs text-slate-400">{postOrder.items?.length || 0} items</p>
+                        <span className="text-cyan-600 text-sm font-bold">{(postOrder as any).order?.order_no || '-'}</span>
+                        <p className="text-xs text-slate-400">{(postOrder as any).items?.length || 0} items</p>
                     </div>
                 </div>
                 <span className={cn('px-3 py-1.5 rounded-lg text-xs font-bold', statusBg)}>{postOrder.status || 'pending'}</span>
@@ -141,13 +142,13 @@ export default function ReceivingPage() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
     const [currentPage, setCurrentPage] = useState(1)
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [preselectedOrderId, setPreselectedOrderId] = useState<number | null>(null)
-    const [modalSelectedOrders, setModalSelectedOrders] = useState<Set<number>>(new Set())
-    const [inspectionResults, setInspectionResults] = useState<Record<number, 'passed' | 'failed'>>({})
-    const [notes, setNotes] = useState<Record<number, string>>({})
+    const [preselectedOrderId, setPreselectedOrderId] = useState<string | null>(null)
+    const [modalSelectedOrders, setModalSelectedOrders] = useState<Set<string>>(new Set())
+    const [inspectionResults, setInspectionResults] = useState<Record<string, 'passed' | 'failed'>>({})
+    const [notes, setNotes] = useState<Record<string, string>>({})
     const itemsPerPage = 12
 
-    const { data: postOrders } = useQuery({ queryKey: ['post-orders'], queryFn: () => api.postOrders.list() })
+    const { data: postOrders, isLoading } = useQuery({ queryKey: ['post-orders'], queryFn: () => api.postOrders.list() })
 
     useEffect(() => {
         if (isModalOpen && preselectedOrderId) setModalSelectedOrders(new Set([preselectedOrderId]))
@@ -164,18 +165,23 @@ export default function ReceivingPage() {
     const paginatedOrders = postOrders?.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage) || []
     const pendingOrders = postOrders?.filter((po: any) => po.status === 'pending_inspection') || []
 
+    const stats = useMemo(() => [
+        { label: 'Pending Inspection', value: pendingCount, icon: Clock, color: 'from-amber-500 to-amber-600' },
+        { label: 'Passed', value: passedCount, icon: CheckCircle, color: 'from-emerald-500 to-emerald-600' },
+        { label: 'Failed', value: failedCount, icon: XCircle, color: 'from-red-500 to-red-600' },
+    ], [pendingCount, passedCount, failedCount])
 
     const handleStartInspection = () => { setPreselectedOrderId(null); setIsModalOpen(true) }
-    const handleInspectOrder = (orderId: number) => { setPreselectedOrderId(orderId); setIsModalOpen(true) }
+    const handleInspectOrder = (orderId: string) => { setPreselectedOrderId(orderId); setIsModalOpen(true) }
     const handleConfirmInspection = (selectedOrders: any[]) => { console.log('Starting inspection for orders:', selectedOrders); setIsModalOpen(false); setPreselectedOrderId(null) }
-    const handleToggleOrder = (id: number) => {
+    const handleToggleOrder = (id: string) => {
         const newSelected = new Set(modalSelectedOrders)
         if (newSelected.has(id)) newSelected.delete(id)
         else newSelected.add(id)
         setModalSelectedOrders(newSelected)
     }
-    const handleInspectionResult = (id: number, result: 'passed' | 'failed') => { setInspectionResults(prev => ({ ...prev, [id]: result })) }
-    const handleNoteChange = (id: number, note: string) => { setNotes(prev => ({ ...prev, [id]: note })) }
+    const handleInspectionResult = (id: string, result: 'passed' | 'failed') => { setInspectionResults(prev => ({ ...prev, [id]: result })) }
+    const handleNoteChange = (id: string, note: string) => { setNotes(prev => ({ ...prev, [id]: note })) }
     const handleModalConfirm = () => {
         const selectedData = pendingOrders.filter((po: any) => modalSelectedOrders.has(po.id))
         const results = selectedData.map((po: any) => ({ ...po, result: inspectionResults[po.id] || 'passed', notes: notes[po.id] || '' }))
@@ -195,11 +201,7 @@ export default function ReceivingPage() {
 
                 <FadeIn delay={0.1}>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {[
-                        { label: 'Pending Inspection', value: pendingCount, icon: Clock, color: 'from-amber-500 to-amber-600' },
-                        { label: 'Passed', value: passedCount, icon: CheckCircle, color: 'from-emerald-500 to-emerald-600' },
-                        { label: 'Failed', value: failedCount, icon: XCircle, color: 'from-red-500 to-red-600' },
-                    ].map((stat) => (
+                    {stats.map((stat) => (
                         <div 
                             key={stat.label} 
                             className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-slate-100/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
@@ -219,7 +221,9 @@ export default function ReceivingPage() {
                 </FadeIn>
 
                 <FadeIn delay={0.15}>
-                {viewMode === 'list' ? (
+                {isLoading ? (
+                    <TableSkeleton rows={4} />
+                ) : viewMode === 'list' ? (
                     <Card className="overflow-hidden border border-slate-100/50 bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-200/10">
                         <div className="overflow-x-auto">
                             <table className="w-full">

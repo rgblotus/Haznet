@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
-from typing import Literal
 
 
 class Settings(BaseSettings):
@@ -17,11 +17,18 @@ class Settings(BaseSettings):
     postgres_max_overflow: int = 10
     postgres_pool_timeout: int = 30
 
-    secret_key: str = "super-secret-key-change-in-production"
+    secret_key: str = ""
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
 
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     @property
     def database_url(self) -> str:

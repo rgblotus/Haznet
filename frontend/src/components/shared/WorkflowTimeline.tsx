@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import type { IconType } from '@/types/common'
 import {
   FileText, Send, Shield, ClipboardList, Users, FileCheck,
   DollarSign, CheckCircle, XCircle, Clock, AlertTriangle,
@@ -21,7 +22,7 @@ export type WorkflowPhase =
 interface PhaseConfig {
   key: WorkflowPhase
   label: string
-  icon: any
+  icon: IconType
   color: string
   subphases?: { key: string; label: string }[]
 }

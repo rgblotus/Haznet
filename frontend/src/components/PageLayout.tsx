@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { motion } from 'framer-motion'
 
@@ -30,9 +31,9 @@ export default function PageLayout({
                     <span key={i} className="flex items-center gap-2">
                       {i > 0 && <span className="text-slate-300">/</span>}
                       {item.href ? (
-                        <a href={item.href} className="text-slate-500 hover:text-indigo-600 transition-colors font-medium">
+                        <Link to={item.href} className="text-slate-500 hover:text-indigo-600 transition-colors font-medium">
                           {item.label}
-                        </a>
+                        </Link>
                       ) : (
                         <span className="text-slate-800 font-semibold">{item.label}</span>
                       )}

@@ -16,6 +16,8 @@ export type RequisitionStatus =
   | 'inventory_checked'
   | 'processing'
   | 'tender_awaiting'
+  | 'tender_created'
+  | 'tender_awarded'
   | 'order_created'
   | 'shipped'
   | 'receiving'
@@ -187,6 +189,23 @@ export interface Requisition {
   file_reference: string | null
   created_at: string
   updated_at: string
+  financial_year: string | null
+  sap_requisition_number: string | null
+  requisition_create_date: string | null
+  requisition_hod_release_date: string | null
+  job_description: string | null
+  cost_estimate: number | null
+  startup_applicable: boolean
+  industry: string | null
+  sector: string | null
+  contract_period_months: number | null
+  integrity_pact: boolean
+  return_reason: string | null
+  returned_to_indentor: boolean
+  assigned_to_procurement: boolean
+  creator: any
+  department: any
+  tender: any
 }
 
 export interface Tender {
@@ -201,6 +220,7 @@ export interface Tender {
   evaluation_method: string | null
   created_at: string
   updated_at: string
+  estimated_value: number | null
 }
 
 export interface Bid {
@@ -250,6 +270,8 @@ export interface Order {
   notes: string | null
   created_at: string
   updated_at: string
+  vendor: any
+  received_quantity: number | null
 }
 
 export interface PostOrder {
