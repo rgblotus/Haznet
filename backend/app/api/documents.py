@@ -1,14 +1,15 @@
 import os
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from uuid import UUID
+from typing import Optional
 
 from app.database import get_db
 from app.middleware.auth import get_current_user
-from app.models import User, Document, Requisition
-from app.schemas import DocumentOut
+from app.models import User, Document, Requisition, Tender, Bid, Order
+from app.schemas import DocumentOut, DocumentCategory
 
 router = APIRouter()
 
@@ -16,9 +17,47 @@ UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-@router.get("/{req_id}", response_model=list[DocumentOut])
+@router.get("", response_model=list[DocumentOut])
 async def list_documents(
+    requisition_id: Optional[str] = Query(None),
+    tender_id: Optional[str] = Query(None),
+    bid_id: Optional[str] = Query(None),
+    order_id: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Document)
+    
+    if requisition_id:
+        query = query.where(Document.requisition_id == UUID(requisition_id))
+    if tender_id:
+        query = query.where(Document.tender_id == UUID(tender_id))
+    if bid_id:
+        query = query.where(Document.bid_id == UUID(bid_id))
+    if order_id:
+        query = query.where(Document.order_id == UUID(order_id))
+    if category:
+        query = query.where(Document.category == DocumentCategory(category))
+    
+    query = query.order_by(Document.created_at.desc())
+    result = await db.execute(query)
+    docs = result.scalars().all()
+
+    output = []
+    for doc in docs:
+        uploader_result = await db.execute(select(User).where(User.id == doc.uploaded_by))
+        uploader = uploader_result.scalar_one_or_none()
+        doc_out = DocumentOut.model_validate(doc)
+        doc_out.uploader_name = f"{uploader.first_name} {uploader.last_name}" if uploader else "Unknown"
+        output.append(doc_out)
+    return output
+
+
+@router.get("/{req_id}", response_model=list[DocumentOut])
+async def list_requisition_documents(
     req_id: UUID,
+    category: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -27,9 +66,12 @@ async def list_documents(
     if not req:
         raise HTTPException(404, "Requisition not found")
 
-    result = await db.execute(
-        select(Document).where(Document.requisition_id == req_id).order_by(Document.created_at.desc())
-    )
+    query = select(Document).where(Document.requisition_id == req_id)
+    if category:
+        query = query.where(Document.category == DocumentCategory(category))
+    query = query.order_by(Document.created_at.desc())
+    
+    result = await db.execute(query)
     docs = result.scalars().all()
 
     output = []
@@ -46,6 +88,11 @@ async def list_documents(
 async def upload_document(
     req_id: UUID,
     file: UploadFile = File(...),
+    tender_id: Optional[str] = Query(None),
+    bid_id: Optional[str] = Query(None),
+    order_id: Optional[str] = Query(None),
+    category: str = Query("other"),
+    description: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -64,6 +111,11 @@ async def upload_document(
 
     doc = Document(
         requisition_id=req_id,
+        tender_id=UUID(tender_id) if tender_id else None,
+        bid_id=UUID(bid_id) if bid_id else None,
+        order_id=UUID(order_id) if order_id else None,
+        category=DocumentCategory(category),
+        description=description,
         file_name=file.filename or "unknown",
         file_path=unique_name,
         file_type=file.content_type,
@@ -100,3 +152,33 @@ async def delete_document(
     await db.delete(doc)
     await db.commit()
     return {"message": "Document deleted successfully"}
+
+
+@router.get("/tender/{tender_id}", response_model=list[DocumentOut])
+async def list_tender_documents(
+    tender_id: UUID,
+    category: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Tender).where(Tender.id == tender_id))
+    tender = result.scalar_one_or_none()
+    if not tender:
+        raise HTTPException(404, "Tender not found")
+
+    query = select(Document).where(Document.tender_id == tender_id)
+    if category:
+        query = query.where(Document.category == DocumentCategory(category))
+    query = query.order_by(Document.created_at.desc())
+    
+    result = await db.execute(query)
+    docs = result.scalars().all()
+
+    output = []
+    for doc in docs:
+        uploader_result = await db.execute(select(User).where(User.id == doc.uploaded_by))
+        uploader = uploader_result.scalar_one_or_none()
+        doc_out = DocumentOut.model_validate(doc)
+        doc_out.uploader_name = f"{uploader.first_name} {uploader.last_name}" if uploader else "Unknown"
+        output.append(doc_out)
+    return output

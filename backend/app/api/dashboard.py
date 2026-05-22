@@ -12,8 +12,7 @@ router = APIRouter()
 
 PROCESSING_STATUSES = [
     RequisitionStatus.PROCESSING,
-    RequisitionStatus.TENDER_CREATED,
-    RequisitionStatus.TENDER_AWARDED,
+    RequisitionStatus.TENDER_AWAITING,
     RequisitionStatus.INVENTORY_CHECKED,
     RequisitionStatus.ORDER_CREATED,
     RequisitionStatus.SHIPPED,

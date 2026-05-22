@@ -5,7 +5,13 @@ from sqlalchemy.sql import func
 import uuid
 
 from app.database import Base
-from app.models.enums import UserRole, RequisitionStatus, TenderStatus, OrderStatus, PostOrderStatus, Priority, HODCNPApproval, InventoryCheckStatus, ProcurementMethod, QualityStatus, Designation, VendorStatus
+from app.models.enums import (
+    UserRole, RequisitionStatus, TenderStatus, OrderStatus, PostOrderStatus,
+    Priority, HODCNPApproval, InventoryCheckStatus, ProcurementMethod, QualityStatus,
+    Designation, VendorStatus, RequisitionStage, InternalApprovalStatus,
+    TenderEvaluationStage, TenderCancellationReason, OrderStatusExtended,
+    DocumentCategory,
+)
 
 
 class User(Base):
@@ -112,15 +118,26 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    requisition_id = Column(UUID(as_uuid=True), ForeignKey("requisitions.id"), nullable=False)
+    requisition_id = Column(UUID(as_uuid=True), ForeignKey("requisitions.id"), nullable=False, index=True)
+    tender_id = Column(UUID(as_uuid=True), ForeignKey("tenders.id"), nullable=True, index=True)
+    bid_id = Column(UUID(as_uuid=True), ForeignKey("bids.id"), nullable=True, index=True)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True, index=True)
+    
+    category = Column(SAEnum(DocumentCategory, name="document_category"), default=DocumentCategory.OTHER)
+    description = Column(String(255), nullable=True)
+    
     file_name = Column(String(255), nullable=False)
     file_path = Column(String(500), nullable=False)
     file_type = Column(String(50), nullable=True)
     file_size = Column(Integer, nullable=True)
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     requisition = relationship("Requisition", back_populates="documents")
+    tender = relationship("Tender", foreign_keys=[tender_id])
+    bid = relationship("Bid", foreign_keys=[bid_id])
+    order = relationship("Order", foreign_keys=[order_id])
     uploader = relationship("User")
 
 
@@ -267,3 +284,257 @@ class ActivityLog(Base):
 
     requisition = relationship("Requisition", foreign_keys=[requisition_id])
     user = relationship("User", foreign_keys=[user_id])
+
+
+class RequisitionStageHistory(Base):
+    __tablename__ = "requisition_stage_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requisition_id = Column(UUID(as_uuid=True), ForeignKey("requisitions.id"), nullable=False, index=True)
+    stage = Column(SAEnum(RequisitionStage, name="requisition_stage"), nullable=False)
+    status = Column(SAEnum(InternalApprovalStatus, name="internal_approval_status"), default=InternalApprovalStatus.PENDING)
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    requisition = relationship("Requisition", foreign_keys=[requisition_id])
+    completer = relationship("User", foreign_keys=[completed_by])
+
+
+class InternalApprovalDetail(Base):
+    __tablename__ = "internal_approval_details"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requisition_id = Column(UUID(as_uuid=True), ForeignKey("requisitions.id"), nullable=False, index=True)
+    
+    checklist_completed = Column(Boolean, default=False)
+    checklist_completed_at = Column(DateTime(timezone=True), nullable=True)
+    checklist_completed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    checklist_notes = Column(Text, nullable=True)
+    
+    clarification_required = Column(Boolean, default=False)
+    clarification_sent_at = Column(DateTime(timezone=True), nullable=True)
+    clarification_response = Column(Text, nullable=True)
+    clarification_responded_at = Column(DateTime(timezone=True), nullable=True)
+    
+    tender_committee_recommendation = Column(Text, nullable=True)
+    tender_committee_recommended_at = Column(DateTime(timezone=True), nullable=True)
+    tender_committee_recommended_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    requisition = relationship("Requisition", foreign_keys=[requisition_id])
+
+
+class TenderProcess(Base):
+    __tablename__ = "tender_process"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tender_id = Column(UUID(as_uuid=True), ForeignKey("tenders.id"), nullable=False, index=True)
+    
+    pre_bid_meeting_date = Column(DateTime(timezone=True), nullable=True)
+    pre_bid_meeting_venue = Column(String(255), nullable=True)
+    pre_bid_meeting_minutes = Column(Text, nullable=True)
+    
+    bid_creation_date = Column(DateTime(timezone=True), nullable=True)
+    bid_opening_date = Column(DateTime(timezone=True), nullable=True)
+    bid_closing_date = Column(DateTime(timezone=True), nullable=True)
+    
+    document_vetting_done = Column(Boolean, default=False)
+    document_vetted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    document_vetted_at = Column(DateTime(timezone=True), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    tender = relationship("Tender", foreign_keys=[tender_id])
+    vetting_user = relationship("User", foreign_keys=[document_vetted_by])
+
+
+class TenderEvaluation(Base):
+    __tablename__ = "tender_evaluation"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tender_id = Column(UUID(as_uuid=True), ForeignKey("tenders.id"), nullable=False, index=True)
+    
+    stage = Column(SAEnum(TenderEvaluationStage, name="tender_evaluation_stage"), nullable=False)
+    status = Column(String(50), default="pending")
+    
+    technical_query_raised = Column(Boolean, default=False)
+    technical_query_sheet = Column(Text, nullable=True)
+    technical_query_raised_at = Column(DateTime(timezone=True), nullable=True)
+    
+    commercial_query_raised = Column(Boolean, default=False)
+    commercial_query_sheet = Column(Text, nullable=True)
+    commercial_query_raised_at = Column(DateTime(timezone=True), nullable=True)
+    
+    clarification_response_received = Column(Boolean, default=False)
+    clarification_response_at = Column(DateTime(timezone=True), nullable=True)
+    
+    revised_evaluation_done = Column(Boolean, default=False)
+    revised_evaluation_at = Column(DateTime(timezone=True), nullable=True)
+    
+    final_score = Column(Float, nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    tender = relationship("Tender", foreign_keys=[tender_id])
+    completer = relationship("User", foreign_keys=[completed_by])
+
+
+class BidEvaluationDetail(Base):
+    __tablename__ = "bid_evaluation_details"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    bid_id = Column(UUID(as_uuid=True), ForeignKey("bids.id"), nullable=False, index=True)
+    tender_evaluation_id = Column(UUID(as_uuid=True), ForeignKey("tender_evaluation.id"), nullable=True)
+    
+    technical_score = Column(Float, nullable=True)
+    technical_evaluated_at = Column(DateTime(timezone=True), nullable=True)
+    technical_evaluated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    technical_remarks = Column(Text, nullable=True)
+    
+    commercial_score = Column(Float, nullable=True)
+    commercial_evaluated_at = Column(DateTime(timezone=True), nullable=True)
+    commercial_evaluated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    commercial_remarks = Column(Text, nullable=True)
+    
+    is_technically_qualified = Column(Boolean, default=False)
+    is_commercially_acceptable = Column(Boolean, default=False)
+    is_final_recommended = Column(Boolean, default=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    bid = relationship("Bid", foreign_keys=[bid_id])
+    tender_evaluation = relationship("TenderEvaluation", foreign_keys=[tender_evaluation_id])
+
+
+class ComparativeStatement(Base):
+    __tablename__ = "comparative_statements"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tender_id = Column(UUID(as_uuid=True), ForeignKey("tenders.id"), nullable=False, index=True)
+    
+    statement_data = Column(Text, nullable=False)
+    vetted = Column(Boolean, default=False)
+    vetted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    vetted_at = Column(DateTime(timezone=True), nullable=True)
+    vetting_remarks = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    tender = relationship("Tender", foreign_keys=[tender_id])
+    vetter = relationship("User", foreign_keys=[vetted_by])
+
+
+class TenderNegotiation(Base):
+    __tablename__ = "tender_negotiations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tender_id = Column(UUID(as_uuid=True), ForeignKey("tenders.id"), nullable=False, index=True)
+    bid_id = Column(UUID(as_uuid=True), ForeignKey("bids.id"), nullable=False)
+    
+    negotiation_notes = Column(Text, nullable=True)
+    final_negotiated_price = Column(Float, nullable=True)
+    negotiated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    negotiated_at = Column(DateTime(timezone=True), nullable=True)
+    accounts_consulted = Column(Boolean, default=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    tender = relationship("Tender", foreign_keys=[tender_id])
+    bid = relationship("Bid", foreign_keys=[bid_id])
+    negotiator = relationship("User", foreign_keys=[negotiated_by])
+
+
+class TenderCommitteeRecommendation(Base):
+    __tablename__ = "tender_committee_recommendations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tender_id = Column(UUID(as_uuid=True), ForeignKey("tenders.id"), nullable=False, index=True)
+    
+    recommendation_type = Column(String(100), nullable=False)
+    recommended_bid_id = Column(UUID(as_uuid=True), ForeignKey("bids.id"), nullable=True)
+    recommended_vendor_name = Column(String(255), nullable=True)
+    recommended_amount = Column(Float, nullable=True)
+    
+    recommendation_text = Column(Text, nullable=True)
+    recommended_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    recommended_at = Column(DateTime(timezone=True), nullable=True)
+    
+    approved = Column(Boolean, default=False)
+    approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    tender = relationship("Tender", foreign_keys=[tender_id])
+    recommended_bid = relationship("Bid", foreign_keys=[recommended_bid_id])
+    recommender = relationship("User", foreign_keys=[recommended_by])
+    approver = relationship("User", foreign_keys=[approved_by])
+
+
+class OrderExecutionDetail(Base):
+    __tablename__ = "order_execution_details"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False, index=True)
+    
+    bidder_accepted = Column(Boolean, default=False)
+    bidder_accepted_at = Column(DateTime(timezone=True), nullable=True)
+    
+    contract_signed = Column(Boolean, default=False)
+    contract_signed_at = Column(DateTime(timezone=True), nullable=True)
+    contract_document_path = Column(String(500), nullable=True)
+    
+    security_deposit_submitted = Column(Boolean, default=False)
+    security_deposit_amount = Column(Float, nullable=True)
+    security_deposit_submitted_at = Column(DateTime(timezone=True), nullable=True)
+    security_deposit_details = Column(Text, nullable=True)
+    
+    forwarded_to_engineer = Column(Boolean, default=False)
+    forwarded_at = Column(DateTime(timezone=True), nullable=True)
+    engineer_in_charge_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    order = relationship("Order", foreign_keys=[order_id])
+    engineer = relationship("User", foreign_keys=[engineer_in_charge_id])
+
+
+class TenderCancellation(Base):
+    __tablename__ = "tender_cancellations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tender_id = Column(UUID(as_uuid=True), ForeignKey("tenders.id"), nullable=False, index=True)
+    requisition_id = Column(UUID(as_uuid=True), ForeignKey("requisitions.id"), nullable=True)
+    
+    reason = Column(SAEnum(TenderCancellationReason, name="tender_cancellation_reason"), nullable=False)
+    cancellation_notes = Column(Text, nullable=True)
+    
+    l1_backout = Column(Boolean, default=False)
+    new_lowest_bid_id = Column(UUID(as_uuid=True), ForeignKey("bids.id"), nullable=True)
+    
+    cancelled_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    cancelled_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    requisition_status_after = Column(String(50), nullable=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    tender = relationship("Tender", foreign_keys=[tender_id])
+    requisition = relationship("Requisition", foreign_keys=[requisition_id])
+    canceller = relationship("User", foreign_keys=[cancelled_by])
+    new_lowest_bid = relationship("Bid", foreign_keys=[new_lowest_bid_id])

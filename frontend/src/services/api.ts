@@ -77,7 +77,7 @@ async function request<T>(
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
-      throw new HttpError(res.status, body.detail || `Request failed with status ${res.status}`)
+      throw new HttpError(res.status, body.detail || body.message || `Request failed with status ${res.status}`)
     }
 
     return await res.json() as Promise<T>
@@ -159,12 +159,34 @@ export const api = {
   },
 
   documents: {
-    list: (reqId: string) => request<any[]>(`/documents/${reqId}`),
-    upload: async (reqId: string, file: File) => {
+    list: (params: { requisition_id?: string; tender_id?: string; bid_id?: string; order_id?: string; category?: string } = {}) => {
+      const query = qs({
+        requisition_id: params.requisition_id,
+        tender_id: params.tender_id,
+        bid_id: params.bid_id,
+        order_id: params.order_id,
+        category: params.category,
+      })
+      return request<any[]>(`/documents${query || ''}`)
+    },
+    listByRequisition: (reqId: string, category?: string) => {
+      const query = category ? `?category=${category}` : ''
+      return request<any[]>(`/documents/${reqId}${query}`)
+    },
+    listByTender: (tenderId: string, category?: string) => {
+      const query = category ? `?category=${category}` : ''
+      return request<any[]>(`/documents/tender/${tenderId}${query}`)
+    },
+    upload: async (reqId: string, file: File, options?: { tender_id?: string; bid_id?: string; order_id?: string; category?: string; description?: string }) => {
       const formData = new FormData()
       formData.append('file', file)
-      const token = localStorage.getItem('token')
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/documents/${reqId}`, {
+      if (options?.tender_id) formData.append('tender_id', options.tender_id)
+      if (options?.bid_id) formData.append('bid_id', options.bid_id)
+      if (options?.order_id) formData.append('order_id', options.order_id)
+      if (options?.category) formData.append('category', options.category)
+      if (options?.description) formData.append('description', options.description)
+      const token = useAuthStore.getState().token
+      const res = await fetch(`${API_BASE}/documents/${reqId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -193,7 +215,6 @@ export const api = {
     publish: (id: string) =>
       request<Tender>(`/tenders/${id}/publish`, { method: 'POST' }),
     getBids: (id: string) => request<Bid[]>(`/tenders/${id}/bids`),
-    bids: (id: string) => request<Bid[]>(`/tenders/${id}/bids`),
     createBid: (tenderId: string, data: Partial<Bid>) =>
       request<Bid>(`/tenders/${tenderId}/bids`, { method: 'POST', body: JSON.stringify(data) }),
     evaluateBid: (tenderId: string, bidId: string, technical: number, financial: number) =>
@@ -292,6 +313,80 @@ export const api = {
       user_role: string
       user_department: string | null
     }>('/dashboard/summary'),
+  },
+
+  workflow: {
+    getStatus: (reqId: string) =>
+      request<any>(`/workflow/requisition/${reqId}/workflow-status`),
+    updateInternalApproval: (reqId: string, data: any) =>
+      request<any>(`/workflow/requisition/${reqId}/internal-approval`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    moveToTenderCreation: (reqId: string) =>
+      request<any>(`/workflow/requisition/${reqId}/move-to-tender-creation`, {
+        method: 'POST',
+      }),
+    updateTenderProcess: (tenderId: string, data: any) =>
+      request<any>(`/workflow/tender/${tenderId}/process`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    createEvaluation: (tenderId: string, data: { tender_id: string; stage: string }) =>
+      request<any>(`/workflow/tender/${tenderId}/evaluation`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    updateEvaluation: (tenderId: string, evalId: string, data: any) =>
+      request<any>(`/workflow/tender/${tenderId}/evaluation/${evalId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    listEvaluations: (tenderId: string) =>
+      request<any[]>(`/workflow/tender/${tenderId}/evaluations`),
+    evaluateBid: (bidId: string, data: any) =>
+      request<any>(`/workflow/bid/${bidId}/evaluation`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    createComparativeStatement: (tenderId: string, data: { tender_id: string; statement_data: string }) =>
+      request<any>(`/workflow/tender/${tenderId}/comparative-statement`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    updateComparativeStatement: (csId: string, data: any) =>
+      request<any>(`/workflow/comparative-statement/${csId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    createNegotiation: (tenderId: string, data: any) =>
+      request<any>(`/workflow/tender/${tenderId}/negotiation`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    createRecommendation: (tenderId: string, data: any) =>
+      request<any>(`/workflow/tender/${tenderId}/recommendation`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    approveRecommendation: (recId: string) =>
+      request<any>(`/workflow/recommendation/${recId}/approve`, {
+        method: 'PATCH',
+      }),
+    updateOrderExecution: (orderId: string, data: any) =>
+      request<any>(`/workflow/order/${orderId}/execution-detail`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    cancelTender: (tenderId: string, data: any) =>
+      request<any>(`/workflow/tender/${tenderId}/cancel`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    awardToL1: (tenderId: string) =>
+      request<any>(`/workflow/tender/${tenderId}/award-to-l1`, {
+        method: 'POST',
+      }),
   },
 
   health: {

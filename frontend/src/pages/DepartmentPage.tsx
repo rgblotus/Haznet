@@ -112,7 +112,7 @@ export default function DepartmentPage() {
                                                         <FileText size={14} className="text-amber-500" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-semibold text-slate-700">{req.requisition_no}</p>
+                                                        <p className="text-sm font-semibold text-slate-700 font-mono">{req.file_reference || req.requisition_no}</p>
                                                         <p className="text-xs text-slate-400 truncate max-w-[150px]">{req.title}</p>
                                                     </div>
                                                 </div>
@@ -153,7 +153,7 @@ export default function DepartmentPage() {
                                                         <CheckCircle size={14} className="text-emerald-500" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-semibold text-slate-700">{req.requisition_no}</p>
+                                                        <p className="text-sm font-semibold text-slate-700 font-mono">{req.file_reference || req.requisition_no}</p>
                                                         <p className="text-xs text-slate-400 truncate max-w-[150px]">{req.title}</p>
                                                     </div>
                                                 </div>

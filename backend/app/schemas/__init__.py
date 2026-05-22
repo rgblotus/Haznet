@@ -2,12 +2,21 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Generic, TypeVar, List
 from datetime import datetime
 from uuid import UUID
-from app.models.enums import UserRole, RequisitionStatus, TenderStatus, OrderStatus, PostOrderStatus, Designation, Priority, VendorStatus, HODCNPApproval, InventoryCheckStatus, ProcurementMethod, QualityStatus
+from app.models.enums import (
+    UserRole, RequisitionStatus, TenderStatus, OrderStatus, PostOrderStatus,
+    Designation, Priority, VendorStatus, HODCNPApproval, InventoryCheckStatus,
+    ProcurementMethod, QualityStatus, RequisitionStage, InternalApprovalStatus,
+    TenderEvaluationStage, TenderCancellationReason, OrderStatusExtended,
+    DocumentCategory,
+)
 
 __all__ = [
     "UserRole", "RequisitionStatus", "TenderStatus", "OrderStatus",
     "PostOrderStatus", "Designation", "Priority", "VendorStatus",
     "HODCNPApproval", "InventoryCheckStatus", "ProcurementMethod", "QualityStatus",
+    "DocumentCategory",
+    "RequisitionStage", "InternalApprovalStatus", "TenderEvaluationStage",
+    "TenderCancellationReason", "OrderStatusExtended",
 ]
 
 T = TypeVar("T")
@@ -234,9 +243,27 @@ class WorkflowAction(BaseModel):
 
 # ── Document ─────────────────────────────────────────
 
+class DocumentCreate(BaseModel):
+    requisition_id: Optional[UUID] = None
+    tender_id: Optional[UUID] = None
+    bid_id: Optional[UUID] = None
+    order_id: Optional[UUID] = None
+    category: DocumentCategory = DocumentCategory.OTHER
+    description: Optional[str] = None
+    file_name: str
+    file_path: str
+    file_type: Optional[str] = None
+    file_size: Optional[int] = None
+
+
 class DocumentOut(BaseModel):
     id: UUID
     requisition_id: UUID
+    tender_id: Optional[UUID] = None
+    bid_id: Optional[UUID] = None
+    order_id: Optional[UUID] = None
+    category: DocumentCategory = DocumentCategory.OTHER
+    description: Optional[str] = None
     file_name: str
     file_path: str
     file_type: Optional[str] = None
@@ -491,3 +518,261 @@ class ActivityLogOut(BaseModel):
     user_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class RequisitionStageHistoryOut(BaseModel):
+    id: UUID
+    requisition_id: UUID
+    stage: RequisitionStage
+    status: InternalApprovalStatus
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    completed_by: Optional[UUID] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class InternalApprovalDetailOut(BaseModel):
+    id: UUID
+    requisition_id: UUID
+    checklist_completed: bool = False
+    checklist_completed_at: Optional[datetime] = None
+    checklist_notes: Optional[str] = None
+    clarification_required: bool = False
+    clarification_sent_at: Optional[datetime] = None
+    clarification_response: Optional[str] = None
+    clarification_responded_at: Optional[datetime] = None
+    tender_committee_recommendation: Optional[str] = None
+    tender_committee_recommended_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class InternalApprovalDetailUpdate(BaseModel):
+    checklist_completed: Optional[bool] = None
+    checklist_notes: Optional[str] = None
+    clarification_required: Optional[bool] = None
+    clarification_response: Optional[str] = None
+    tender_committee_recommendation: Optional[str] = None
+
+
+class TenderProcessOut(BaseModel):
+    id: UUID
+    tender_id: UUID
+    pre_bid_meeting_date: Optional[datetime] = None
+    pre_bid_meeting_venue: Optional[str] = None
+    pre_bid_meeting_minutes: Optional[str] = None
+    bid_creation_date: Optional[datetime] = None
+    bid_opening_date: Optional[datetime] = None
+    bid_closing_date: Optional[datetime] = None
+    document_vetting_done: bool = False
+    document_vetted_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class TenderProcessUpdate(BaseModel):
+    pre_bid_meeting_date: Optional[datetime] = None
+    pre_bid_meeting_venue: Optional[str] = None
+    pre_bid_meeting_minutes: Optional[str] = None
+    bid_creation_date: Optional[datetime] = None
+    bid_opening_date: Optional[datetime] = None
+    bid_closing_date: Optional[datetime] = None
+    document_vetting_done: Optional[bool] = None
+
+
+class TenderEvaluationOut(BaseModel):
+    id: UUID
+    tender_id: UUID
+    stage: TenderEvaluationStage
+    status: str = "pending"
+    technical_query_raised: bool = False
+    technical_query_sheet: Optional[str] = None
+    commercial_query_raised: bool = False
+    commercial_query_sheet: Optional[str] = None
+    clarification_response_received: bool = False
+    revised_evaluation_done: bool = False
+    final_score: Optional[float] = None
+    completed_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class TenderEvaluationCreate(BaseModel):
+    tender_id: UUID
+    stage: TenderEvaluationStage
+
+
+class TenderEvaluationUpdate(BaseModel):
+    status: Optional[str] = None
+    technical_query_raised: Optional[bool] = None
+    technical_query_sheet: Optional[str] = None
+    commercial_query_raised: Optional[bool] = None
+    commercial_query_sheet: Optional[str] = None
+    clarification_response_received: Optional[bool] = None
+    revised_evaluation_done: Optional[bool] = None
+    final_score: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class BidEvaluationDetailOut(BaseModel):
+    id: UUID
+    bid_id: UUID
+    tender_evaluation_id: Optional[UUID] = None
+    technical_score: Optional[float] = None
+    technical_evaluated_at: Optional[datetime] = None
+    technical_remarks: Optional[str] = None
+    commercial_score: Optional[float] = None
+    commercial_evaluated_at: Optional[datetime] = None
+    commercial_remarks: Optional[str] = None
+    is_technically_qualified: bool = False
+    is_commercially_acceptable: bool = False
+    is_final_recommended: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class BidEvaluationDetailUpdate(BaseModel):
+    technical_score: Optional[float] = None
+    technical_remarks: Optional[str] = None
+    commercial_score: Optional[float] = None
+    commercial_remarks: Optional[str] = None
+    is_technically_qualified: Optional[bool] = None
+    is_commercially_acceptable: Optional[bool] = None
+    is_final_recommended: Optional[bool] = None
+
+
+class ComparativeStatementOut(BaseModel):
+    id: UUID
+    tender_id: UUID
+    statement_data: str
+    vetted: bool = False
+    vetted_at: Optional[datetime] = None
+    vetting_remarks: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ComparativeStatementCreate(BaseModel):
+    tender_id: UUID
+    statement_data: str
+
+
+class ComparativeStatementUpdate(BaseModel):
+    statement_data: Optional[str] = None
+    vetted: Optional[bool] = None
+    vetting_remarks: Optional[str] = None
+
+
+class TenderNegotiationOut(BaseModel):
+    id: UUID
+    tender_id: UUID
+    bid_id: UUID
+    negotiation_notes: Optional[str] = None
+    final_negotiated_price: Optional[float] = None
+    negotiated_at: Optional[datetime] = None
+    accounts_consulted: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class TenderNegotiationCreate(BaseModel):
+    tender_id: UUID
+    bid_id: UUID
+    negotiation_notes: Optional[str] = None
+    final_negotiated_price: Optional[float] = None
+    accounts_consulted: Optional[bool] = None
+
+
+class TenderCommitteeRecommendationOut(BaseModel):
+    id: UUID
+    tender_id: UUID
+    recommendation_type: str
+    recommended_bid_id: Optional[UUID] = None
+    recommended_vendor_name: Optional[str] = None
+    recommended_amount: Optional[float] = None
+    recommendation_text: Optional[str] = None
+    recommended_at: Optional[datetime] = None
+    approved: bool = False
+    approved_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class TenderCommitteeRecommendationCreate(BaseModel):
+    tender_id: UUID
+    recommendation_type: str
+    recommended_bid_id: Optional[UUID] = None
+    recommended_vendor_name: Optional[str] = None
+    recommended_amount: Optional[float] = None
+    recommendation_text: Optional[str] = None
+
+
+class OrderExecutionDetailOut(BaseModel):
+    id: UUID
+    order_id: UUID
+    bidder_accepted: bool = False
+    bidder_accepted_at: Optional[datetime] = None
+    contract_signed: bool = False
+    contract_signed_at: Optional[datetime] = None
+    contract_document_path: Optional[str] = None
+    security_deposit_submitted: bool = False
+    security_deposit_amount: Optional[float] = None
+    security_deposit_submitted_at: Optional[datetime] = None
+    forwarded_to_engineer: bool = False
+    forwarded_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class OrderExecutionDetailUpdate(BaseModel):
+    bidder_accepted: Optional[bool] = None
+    contract_signed: Optional[bool] = None
+    contract_document_path: Optional[str] = None
+    security_deposit_submitted: Optional[bool] = None
+    security_deposit_amount: Optional[float] = None
+    security_deposit_details: Optional[str] = None
+    forwarded_to_engineer: Optional[bool] = None
+    engineer_in_charge_id: Optional[UUID] = None
+
+
+class TenderCancellationOut(BaseModel):
+    id: UUID
+    tender_id: UUID
+    requisition_id: Optional[UUID] = None
+    reason: TenderCancellationReason
+    cancellation_notes: Optional[str] = None
+    l1_backout: bool = False
+    new_lowest_bid_id: Optional[UUID] = None
+    cancelled_by: Optional[UUID] = None
+    cancelled_at: datetime
+    requisition_status_after: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class TenderCancellationCreate(BaseModel):
+    tender_id: UUID
+    requisition_id: Optional[UUID] = None
+    reason: TenderCancellationReason
+    cancellation_notes: Optional[str] = None
+    l1_backout: Optional[bool] = None
+    new_lowest_bid_id: Optional[UUID] = None
+
+
+class WorkflowStatusOut(BaseModel):
+    requisition_id: UUID
+    current_stage: Optional[RequisitionStage] = None
+    internal_approval: Optional[InternalApprovalDetailOut] = None
+    tender_process: Optional[TenderProcessOut] = None
+    tender_status: Optional[TenderStatus] = None
+    evaluation_stage: Optional[TenderEvaluationStage] = None
+    comparative_statement_vetted: bool = False
+    negotiation_done: bool = False
+    order_placed: bool = False
+    contract_executed: bool = False
+    is_cancelled: bool = False
+    cancellation_reason: Optional[str] = None

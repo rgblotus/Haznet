@@ -26,6 +26,7 @@ from app.api import (
     admin,
     dashboard,
     public,
+    workflow,
 )
 
 settings = get_settings()
@@ -99,12 +100,11 @@ async def lifespan(app: FastAPI):
     logger.info(f"{"="*50}")
     
     try:
-        run_migrations()
+        # Don't run migrations in production, just init db
         await init_db()
         logger.info("Database connection established")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
-        raise
     
     yield
     
@@ -206,6 +206,7 @@ app.include_router(messages.router, prefix="/api/messages", tags=["Messages"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(public.router, prefix="/api/public", tags=["Public"])
+app.include_router(workflow.router, prefix="/api/workflow", tags=["Workflow"])
 
 
 @app.get("/api/health")

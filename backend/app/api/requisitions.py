@@ -50,6 +50,19 @@ async def _gen_file_reference(db: AsyncSession, financial_year: str, sap_req_no:
     return f"GAIL/HZR/CNP/{year_part}/{sap_req_no}/{sequence:04d}"
 
 
+async def _gen_file_reference(db: AsyncSession, financial_year: str, sap_req_no: str) -> str:
+    year_part = financial_year.replace("FY ", "") if financial_year.startswith("FY ") else financial_year
+    result = await db.execute(
+        select(func.max(cast(func.substring(Requisition.file_reference, -4), Integer)))
+        .where(Requisition.file_reference.isnot(None))
+    )
+    num = result.scalar() or 0
+    sequence = num + 1
+    if sequence > 1000:
+        sequence = 1
+    return f"GAIL/HZR/CNP/{year_part}/{sap_req_no}/{sequence:04d}"
+
+
 def _can_edit_req(user: User, req: Requisition) -> bool:
     if user.role == UserRole.ADMIN:
         return True

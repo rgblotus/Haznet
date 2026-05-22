@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from sqlalchemy.orm import Session
 from app.models import User, Department as DepartmentModel, Requisition, Vendor, Order, Tender, Bid, Message, PostOrder
-from app.models.enums import UserRole, RequisitionStatus, OrderStatus, TenderStatus, PostOrderStatus, Priority, QualityStatus, Designation
+from app.models.enums import UserRole, RequisitionStatus, OrderStatus, TenderStatus, PostOrderStatus, Priority, QualityStatus, Designation, VendorStatus
 from app.middleware.auth import hash_password
 from app.database import get_sync_engine, Base
 
@@ -125,10 +125,20 @@ def seed(db: Session, force: bool = False):
 
     vendors = []
     for vd in vendors_data:
-        v = Vendor(id=uuid4(), **vd, status="Active")
+        v = Vendor(
+            id=uuid4(),
+            name=vd["name"],
+            contact_person=vd.get("contact_person"),
+            email=vd.get("email"),
+            phone=vd.get("phone"),
+            address=vd.get("address"),
+            category=vd.get("category"),
+            status=VendorStatus.ACTIVE.value,
+            rating=vd.get("rating"),
+        )
         db.add(v)
         vendors.append(v)
-    db.commit()
+    db.flush()
 
     requisitions_data = [
         {"title": "High-Grade Copper Cables (500mm)", "description": "Premium quality copper cables for electrical substation upgrade project. Must comply with IS 694:2010 standards.", "category": "materials", "priority": "High", "quantity": 200, "unit_price_estimate": 1500.0, "total_estimate": 300000.0, "required_by": now + timedelta(days=30), "creator": "eng.electrical1", "dept": "Electrical", "status": RequisitionStatus.PROCESSING},
@@ -143,6 +153,10 @@ def seed(db: Session, force: bool = False):
 
     requisitions = []
     for i, rd in enumerate(requisitions_data):
+        sap_no = f"{20010001 + i:08d}"
+        financial_year = "FY 2025-2026"
+        job_desc = rd["description"][:50] + "..."
+        cost_est = rd["total_estimate"]
         r = Requisition(
             id=uuid4(),
             requisition_no=f"REQ-{i+1:05d}",
@@ -161,10 +175,22 @@ def seed(db: Session, force: bool = False):
             current_owner_id=user_map["proc.officer1"].id if rd["status"] not in [RequisitionStatus.DRAFT, RequisitionStatus.SUBMITTED] else None,
             hodi_cnp_approval="Pending" if rd["status"] == RequisitionStatus.SUBMITTED else "Approved",
             inventory_check_status="NotChecked",
+            financial_year=financial_year,
+            sap_requisition_number=sap_no,
+            requisition_create_date=now - timedelta(days=random.randint(5, 30)),
+            requisition_hod_release_date=now - timedelta(days=random.randint(1, 5)) if rd["status"] != RequisitionStatus.DRAFT else None,
+            job_description=job_desc,
+            cost_estimate=cost_est,
+            startup_applicable=(i % 3) == 0,
+            industry="Construction & Engineering",
+            sector="Procurement",
+            contract_period_months=12 if (i % 2) == 0 else None,
+            integrity_pact=cost_est > 10000000,
+            file_reference=f"GAIL/HZR/CNP/2025-2026/{sap_no}/{(i % 1000) + 1:04d}",
         )
         db.add(r)
         requisitions.append(r)
-    db.commit()
+    db.flush()
 
     tenders_data = [
         {"requisition": requisitions[1], "title": "Hydraulic Press Machine - Competitive Bidding", "description": "Inviting bids from registered vendors for supply and installation of 50-ton hydraulic press machine. Technical specifications attached.", "status": TenderStatus.BIDDING, "issue_date": now - timedelta(days=10), "closing_date": now + timedelta(days=20)},
@@ -240,7 +266,7 @@ def seed(db: Session, force: bool = False):
         )
         db.add(o)
         orders.append(o)
-    db.commit()
+    db.flush()
 
     post_orders_data = [
         {"order": orders[0], "requisition": requisitions[3], "status": PostOrderStatus.PENDING_INSPECTION, "ordered_quantity": 200},

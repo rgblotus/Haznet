@@ -158,25 +158,27 @@ function RightSidebar({
 
 function RequisitionCard({ req }: { req: any }) {
     return (
-        <Link 
-            to={'/requisitions/' + req.id} 
+        <Link
+            to={'/requisitions/' + req.id}
             className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 flex flex-col gap-4 border border-slate-100/50 hover:border-indigo-300/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 no-underline group"
         >
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 flex items-center justify-center group-hover:from-indigo-100 group-hover:to-violet-100 transition-colors">
                         <FileText size={18} className="text-indigo-500" />
                     </div>
-                    <div>
-                        <span className="text-indigo-600 text-sm font-bold">{req.requisition_no}</span>
-                        <p className="text-xs text-slate-400">{req.financial_year || req.category || 'General'}</p>
+                    <div className="min-w-0">
+                        {req.file_reference && (
+                            <span className="text-amber-600 text-sm font-mono font-bold block">{req.file_reference}</span>
+                        )}
+                        <span className="text-[10px] text-indigo-500 font-medium block">{req.requisition_no}</span>
                     </div>
                 </div>
-                <Badge 
+                <Badge
                     variant={
-                        req.status === 'completed' ? 'success' : 
-                        req.status === 'under_review' ? 'warning' : 
-                        req.status === 'returned' ? 'danger' : 
+                        req.status === 'completed' ? 'success' :
+                        req.status === 'under_review' ? 'warning' :
+                        req.status === 'returned' ? 'danger' :
                         'default'
                     }
                     dot
@@ -184,12 +186,12 @@ function RequisitionCard({ req }: { req: any }) {
                     {req.status?.replace('_', ' ')}
                 </Badge>
             </div>
-            <h3 className="text-base font-bold text-slate-700 group-hover:text-indigo-600 transition-colors line-clamp-2">{req.title || req.job_description?.slice(0, 50) || '-'}</h3>
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100/50">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-slate-400">{req.sap_requisition_number || '-'}</span>
+            <h3 className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-snug">{req.title || req.job_description?.slice(0, 50) || '-'}</h3>
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100/50 gap-4">
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[11px] font-mono text-slate-400 truncate">{req.sap_requisition_number || req.financial_year || '-'}</span>
                 </div>
-                <span className="text-lg font-extrabold text-slate-700">₹{(req.cost_estimate || req.total_estimate)?.toLocaleString() || '0'}</span>
+                <span className="text-base font-extrabold text-slate-700 shrink-0">₹{(req.cost_estimate || req.total_estimate)?.toLocaleString() || '0'}</span>
             </div>
         </Link>
     )
@@ -380,51 +382,55 @@ export default function RequisitionsPage() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100/50">
-                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-32">Req No</th>
-                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Title / Job</th>
-                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-32">FY</th>
-                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-28">SAP No</th>
-                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-28">Priority</th>
-                                        <th className="px-5 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-32">Status</th>
-                                        <th className="px-5 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider w-28">Cost</th>
-                                        <th className="px-5 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider w-20">Actions</th>
+                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Req No / File Ref</th>
+                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Title</th>
+                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">FY / SAP</th>
+                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Priority</th>
+                                        <th className="px-4 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-4 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cost</th>
+                                        <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {reqs.map((req: any) => (
-                                        <motion.tr 
-                                            key={req.id} 
+                                        <motion.tr
+                                            key={req.id}
                                             className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors group"
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             transition={{ duration: 0.2 }}
                                         >
-                                            <td className="px-5 py-3 align-middle">
-                                                <span className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-xs font-bold rounded-lg">{req.requisition_no}</span>
+                                            <td className="px-4 py-3.5 align-middle">
+                                                <div className="flex flex-col gap-0.5">
+                                                    {req.file_reference && (
+                                                        <span className="px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[11px] font-mono font-bold rounded-lg">{req.file_reference}</span>
+                                                    )}
+                                                    <span className="text-[10px] text-indigo-500 font-medium">{req.requisition_no}</span>
+                                                </div>
                                             </td>
-                                            <td className="px-5 py-3 align-middle">
+                                            <td className="px-4 py-3.5 align-middle">
                                                 <div>
-                                                    <p className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">{req.title || req.job_description?.slice(0, 40) || '-'}</p>
+                                                    <p className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors line-clamp-1">{req.title || req.job_description?.slice(0, 40) || '-'}</p>
                                                     <p className="text-xs text-slate-400">{req.category || 'General'}</p>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-3 align-middle">
-                                                <span className="text-xs font-semibold text-slate-600">{req.financial_year || '-'}</span>
+                                            <td className="px-4 py-3.5 align-middle">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-[11px] font-semibold text-slate-600">{req.financial_year || '-'}</span>
+                                                    <span className="text-[11px] font-mono font-semibold text-slate-500">{req.sap_requisition_number || '-'}</span>
+                                                </div>
                                             </td>
-                                            <td className="px-5 py-3 align-middle">
-                                                <span className="text-xs font-mono font-semibold text-slate-600">{req.sap_requisition_number || '-'}</span>
-                                            </td>
-                                            <td className="px-5 py-3 align-middle">
-                                                <span className={cn('px-3 py-1.5 rounded-lg text-xs font-bold border', priorityColors[req.priority] || priorityColors.Medium)}>
+                                            <td className="px-4 py-3.5 align-middle">
+                                                <span className={cn('px-2.5 py-1 rounded-lg text-[11px] font-bold border', priorityColors[req.priority] || priorityColors.Medium)}>
                                                     {req.priority || 'Medium'}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-3 align-middle">
-                                                <Badge 
+                                            <td className="px-4 py-3.5 align-middle">
+                                                <Badge
                                                     variant={
-                                                        req.status === 'completed' ? 'success' : 
-                                                        req.status === 'under_review' ? 'warning' : 
-                                                        req.status === 'returned' ? 'danger' : 
+                                                        req.status === 'completed' ? 'success' :
+                                                        req.status === 'under_review' ? 'warning' :
+                                                        req.status === 'returned' ? 'danger' :
                                                         req.status === 'processing' ? 'primary' :
                                                         'default'
                                                     }
@@ -434,15 +440,15 @@ export default function RequisitionsPage() {
                                                     {req.status?.replace('_', ' ')}
                                                 </Badge>
                                             </td>
-                                            <td className="px-5 py-3 align-middle text-right">
+                                            <td className="px-4 py-3.5 align-middle text-right">
                                                 <span className="text-sm font-bold text-slate-700">₹{(req.cost_estimate || req.total_estimate)?.toLocaleString() || '0'}</span>
                                             </td>
-                                            <td className="px-5 py-3 align-middle text-center">
-                                                <Link 
-                                                    to={'/requisitions/' + req.id} 
-                                                    className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-50 to-violet-50 hover:from-indigo-100 hover:to-violet-100 inline-flex items-center justify-center text-indigo-500 transition-all hover:scale-110"
+                                            <td className="px-4 py-3.5 align-middle text-center">
+                                                <Link
+                                                    to={'/requisitions/' + req.id}
+                                                    className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-50 to-violet-50 hover:from-indigo-100 hover:to-violet-100 inline-flex items-center justify-center text-indigo-500 transition-all hover:scale-110"
                                                 >
-                                                    <Eye size={16} />
+                                                    <Eye size={14} />
                                                 </Link>
                                             </td>
                                         </motion.tr>

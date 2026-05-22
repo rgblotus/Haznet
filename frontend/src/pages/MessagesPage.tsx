@@ -92,10 +92,10 @@ function ActionSidebar({ req, onSelect, showDropdown, setShowDropdown, reqs }: {
                         {req ? (
                             <>
                                 <span className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-                                        <FileText size={12} className="text-indigo-500" />
+                                    <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
+                                        <FileText size={12} className="text-amber-500" />
                                     </div>
-                                    <span className="font-medium text-sm">{req.requisition_no}</span>
+                                    <span className="font-medium text-sm font-mono">{req.file_reference || req.requisition_no}</span>
                                 </span>
                                 <ChevronDown size={14} className="text-slate-400" />
                             </>
@@ -112,11 +112,11 @@ function ActionSidebar({ req, onSelect, showDropdown, setShowDropdown, reqs }: {
                                     onClick={() => { onSelect(r.id); setShowDropdown(false) }} 
                                     className="flex items-center gap-2 p-3 cursor-pointer w-full text-left border-b border-slate-100/50 last:border-b-0"
                                 >
-                                    <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-                                        <FileText size={12} className="text-indigo-500" />
+                                    <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
+                                        <FileText size={12} className="text-amber-500" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-slate-700">{r.requisition_no}</p>
+                                        <p className="text-sm font-medium text-slate-700 font-mono">{r.file_reference || r.requisition_no}</p>
                                         <p className="text-xs text-slate-400">{r.title}</p>
                                     </div>
                                 </motion.button>
@@ -281,11 +281,11 @@ export default function MessagesPage() {
                     ) : (
                         <>
                             <div className="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex items-center gap-3">
-                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg">
+                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
                                     <FileText size={18} className="text-white" />
                                 </div>
                                 <div>
-                                    <p className="text-base font-bold text-slate-800">{currentReq.requisition_no}</p>
+                                    <p className="text-base font-bold text-slate-800 font-mono">{currentReq.file_reference || currentReq.requisition_no}</p>
                                     <p className="text-sm text-slate-500">{currentReq.title}</p>
                                 </div>
                                 <Badge variant={(statusToBadgeVariant[currentReq.status] || 'default') as any} className="ml-auto font-medium" dot>
